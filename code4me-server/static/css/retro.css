@@ -1,10 +1,14 @@
 /**
 Credits: https://github.com/markdowncss/retro
  */
+@font-face {
+  font-family: "JetBrainsMono";
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
 
 pre,
 code {
-  font-family: Menlo, Monaco, "Courier New", monospace;
+  font-family: "JetBrainsMono", Menlo, Monaco, "Courier New", monospace;
 }
 
 pre {
@@ -187,7 +191,7 @@ html {
 
 body {
   color: #fafafa;
-  font-family: "Courier New";
+  font-family: "JetBrainsMono", monospace;
   line-height: 1.45;
   margin: 6rem auto 1rem;
   max-width: 48rem;

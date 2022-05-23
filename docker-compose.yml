@@ -29,6 +29,8 @@ services:
       - ./code4me-server/nltk_data:/codeforme/nltk_data
       - ./code4me-server/data:/codeforme/data
       - ./code4me-server/markdowns:/codeforme/markdowns
+      - ./code4me-server/templates:/codeforme/templates
+      - ./code4me-server/static:/codeforme/static
     expose:
       - 3000
     environment:

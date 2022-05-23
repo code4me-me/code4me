@@ -11,6 +11,4 @@ WORKDIR /codeforme
 COPY requirements.txt ./
 RUN pip3 install -r requirements.txt
 COPY src/ .
-COPY templates/ ./templates
-COPY static/ ./static
 CMD ["python3", "./app.py"]
