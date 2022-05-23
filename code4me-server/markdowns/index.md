@@ -19,4 +19,4 @@ However, we do **not** store any of this information server-side, it is purely u
 These metrics output a numeral score, so server-side not even the completion by the model will be stored.
 
 ## Source Code
-The source code for the IDE plugins and the API webserver can be found at our GitHub [repository](https://github.com/FrankHeijden/code-completion-plugin).
+The source code for the IDE plugins and the API webserver can be found at our GitHub [repository](https://github.com/code4me-me/code4me).
