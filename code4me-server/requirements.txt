@@ -1,0 +1,9 @@
+Flask~=2.1.2
+Flask-Limiter~=2.4.5.1
+torch~=1.11.0
+transformers~=4.18.0
+rouge-score~=0.0.4
+Levenshtein~=0.18.1
+nltk~=3.7
+datasets~=2.2.1
+markdown~=3.3.7

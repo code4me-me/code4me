@@ -1,0 +1,31 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>me.code4me.plugin</id>
+    <name>Code4Me</name>
+    <vendor>TU Delft Research Project</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="me.code4me.plugin.services.Code4MeApiService"/>
+        <projectService serviceImplementation="me.code4me.plugin.services.Code4MeSettingsService"/>
+        <notificationGroup id="Code4Me Notifications" displayType="BALLOON"/>
+        <completion.contributor language="any"
+                                implementationClass="me.code4me.plugin.completions.Code4MeCompletionContributor"
+                                order="first"/>
+    </extensions>
+
+    <applicationListeners>
+        <listener class="me.code4me.plugin.listeners.Code4MeProjectManagerListener"
+                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </applicationListeners>
+
+    <actions>
+        <action id="me.code4me.plugin.actions.CodeCompleteAction"
+                class="me.code4me.plugin.actions.CodeCompleteAction"
+                text="Code Complete Action">
+            <add-to-group group-id="ToolsMenu" anchor="first" />
+            <keyboard-shortcut keymap="$default" first-keystroke="alt shift K" />
+        </action>
+    </actions>
+</idea-plugin>

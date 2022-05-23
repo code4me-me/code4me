@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  nginx:
+    image: nginx:1.21.6
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - codeforme
+    volumes:
+      - ./nuhginks/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nuhginks/cloudflare.conf:/etc/nginx/cloudflare.conf
+      - ./nuhginks/certs:/etc/nginx/certs
+    ports:
+      - "443:443"
+  codeforme:
+    build:
+      context: ./code4me-server
+      dockerfile: Dockerfile
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    volumes:
+      - ./code4me-server/.cache:/codeforme/.cache
+      - ./code4me-server/users.json:/codeforme/users.json
+      - ./code4me-server/nltk_data:/codeforme/nltk_data
+      - ./code4me-server/data:/codeforme/data
+      - ./code4me-server/markdowns:/codeforme/markdowns
+    expose:
+      - 3000
+    environment:
+      - CODE4ME_CUDA=True
+      - NVIDIA_VISIBLE_DEVICES=all

@@ -1,0 +1,8 @@
+.gradle
+.idea
+build
+.java-version
+venv
+__pycache__
+users*.json
+
