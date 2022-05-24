@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Code4MeCompletionContributor extends CompletionContributor {
 
-    private static Completion currentCompletion = new Completion("", -1, "");
+    private static final CompletionCache completionCache = new CompletionCache();
 
     public Code4MeCompletionContributor() {
         extend(CompletionType.BASIC, PlatformPatterns.psiElement(), new Code4MeCompletionProvider());
@@ -62,11 +62,11 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 if (completion == null || completion.isBlank()) {
                     HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
                 } else {
-                    Code4MeCompletionContributor.currentCompletion = new Completion(
-                            completion,
-                            offset,
-                            res.getCompletionToken()
-                    );
+                    completionCache.setCompletion(completion);
+                    completionCache.setOffset(offset);
+                    completionCache.setCompletionToken(res.getCompletionToken());
+                    completionCache.setEmpty(false);
+
                     ApplicationManager.getApplication().invokeLater(() -> {
                         CodeCompletionHandlerBase handler = CodeCompletionHandlerBase.createHandler(
                                 CompletionType.BASIC,
@@ -132,26 +132,24 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 @NotNull ProcessingContext context,
                 @NotNull CompletionResultSet result
         ) {
-            if (currentCompletion == null
-                    || currentCompletion.completion == null
-                    || currentCompletion.completion.isEmpty()) {
+            if (completionCache.isEmpty()) {
                 return;
             }
 
-            result.addElement(prioritize(LookupElementBuilder.create(currentCompletion.completion)
+            result.addElement(prioritize(LookupElementBuilder.create(completionCache.getCompletion())
                     .withIcon(Code4MeIcons.PLUGIN_ICON)
                     .withInsertHandler((cxt, item) -> {
                         checkCodeChanges(
                                 cxt.getProject(),
-                                currentCompletion.completionToken,
-                                currentCompletion.completion,
-                                currentCompletion.offset,
+                                completionCache.getCompletionToken(),
+                                completionCache.getCompletion(),
+                                completionCache.getOffset(),
                                 cxt.getDocument()
                         );
-                        currentCompletion = null;
                     })
                     .withTypeText("Code4Me")
             ));
+            completionCache.setEmpty(true);
         }
     }
 
@@ -168,16 +166,50 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         );
     }
 
-    private static class Completion {
+    private static class CompletionCache {
 
-        private final String completion;
-        private final int offset;
-        private final String completionToken;
+        private String completion;
+        private int offset;
+        private String completionToken;
+        private boolean empty;
 
-        public Completion(String completion, int offset, String completionToken) {
+        public CompletionCache() {
+            this.completion = "";
+            this.offset = -1;
+            this.completionToken = "";
+            this.empty = true;
+        }
+
+        public void setCompletion(String completion) {
             this.completion = completion;
+        }
+
+        public String getCompletion() {
+            return completion;
+        }
+
+        public void setOffset(int offset) {
             this.offset = offset;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+
+        public void setCompletionToken(String completionToken) {
             this.completionToken = completionToken;
+        }
+
+        public String getCompletionToken() {
+            return completionToken;
+        }
+
+        public void setEmpty(boolean empty) {
+            this.empty = empty;
+        }
+
+        public boolean isEmpty() {
+            return empty;
         }
     }
 }
