@@ -50,6 +50,8 @@ public class Code4MeDocumentListener implements DocumentListener {
             entry("=", true),
             entry("==", false),
             entry("!=", false),
+            entry("<=", false),
+            entry(">=", false),
             entry("with", true),
             entry(";", false),
             entry(",", false),

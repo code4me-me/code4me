@@ -1,13 +1,13 @@
 # GitHub Actions Workflow created for handling the release process based on the draft release prepared
 # with the Build workflow. Running the publishPlugin task requires the PUBLISH_TOKEN secret provided.
 
-name: Release
+name: Release JetBrains Plugin
 on:
   release:
     types: [prereleased, released]
 
 env:
-  WORKING_DIRECTORY: code4me-plugin
+  WORKING_DIRECTORY: code4me-jetbrains-plugin
 
 jobs:
 
