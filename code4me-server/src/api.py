@@ -38,7 +38,8 @@ def autocomplete():
         f.write(json.dumps({
             "completionTimestamp": datetime.now().isoformat(),
             "triggerPoint": body.get("triggerPoint", None),
-            "language": body["language"]
+            "language": body["language"].lower(),
+            "ide": body["ide"].lower()
         }))
 
     return response({

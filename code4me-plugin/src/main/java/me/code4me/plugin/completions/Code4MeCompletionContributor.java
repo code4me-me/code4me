@@ -53,7 +53,8 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         Code4MeAutocompleteRequest request = new Code4MeAutocompleteRequest(
                 parts,
                 triggerPoint,
-                Code4MeUtil.getLanguage(project, doc)
+                Code4MeUtil.getLanguage(project, doc),
+                "jetbrains"
         );
 
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {

@@ -32,12 +32,14 @@ Content-Type: application/json
 {
   "parts": string[],
   "triggerPoint": string | null,
-  "language": string
+  "language": string,
+  "ide": string
 }
 ```
 - `parts`: an array of strings to autocomplete in between
 - `triggerPoint`: the trigger keyword in case a trigger point was used, null otherwise
 - `language`: language of the source file
+- `ide`: the ide the request was fired from
 
 #### Response body
 ```
