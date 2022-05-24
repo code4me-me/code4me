@@ -9,6 +9,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeApiService"/>
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeSettingsService"/>
+        <projectService serviceImplementation="me.code4me.plugin.services.Code4MeTriggerPointsService"/>
         <notificationGroup id="Code4Me Notifications" displayType="BALLOON"/>
         <completion.contributor language="any"
                                 implementationClass="me.code4me.plugin.completions.Code4MeCompletionContributor"
