@@ -2,7 +2,8 @@
 <idea-plugin>
     <id>me.code4me.plugin</id>
     <name>Code4Me</name>
-    <vendor>TU Delft Research Project</vendor>
+    <vendor url="https://code4me.me"
+            email="hello@code4me.me">Code4Me</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 

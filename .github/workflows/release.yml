@@ -65,7 +65,7 @@ jobs:
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: ./gradlew publishPlugin
+        run: ./gradlew clean publishPlugin
 
       # Upload artifact as a release asset
       - name: Upload Release Asset

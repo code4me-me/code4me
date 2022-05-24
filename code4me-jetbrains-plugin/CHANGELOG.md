@@ -3,3 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Added
+- Changelog
+
+### Fixed
+- Updated vendor
