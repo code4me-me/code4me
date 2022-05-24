@@ -1,19 +1,10 @@
-import tokenize
+import re
 from datetime import datetime
-from io import BytesIO
 
 import Levenshtein as Levenshtein
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
-
-fix_tokens = {
-    tokenize.DEDENT: "DEDENT",
-    tokenize.INDENT: "INDENT",
-    tokenize.ENDMARKER: "ENDMARKER",
-    tokenize.NEWLINE: "NEWLINE",
-    tokenize.ENCODING: "",
-}
 
 
 def compute_rouge(line: str, completion: str):
@@ -29,18 +20,11 @@ def compute_rouge(line: str, completion: str):
 
 
 def tokenize_code(code):
-    tokens = []
-    try:
-        tokenized_code = tokenize.tokenize(BytesIO(code.encode('utf-8')).readline)
-        for token in tokenized_code:
-            if token.type in fix_tokens:
-                fixed_token = fix_tokens[token.type]
-                if fixed_token != "":
-                    tokens.append(fixed_token)
-            else:
-                tokens.append(token.string)
-    except tokenize.TokenError:
-        tokens.append(code)  # TODO fix if non compiling code
+    tokens = [
+        x
+        for x in re.split('("""(.|\n)*"""|"(.|\n)*"|#.*|!=|\*\*|<<|>>|==|>=|<=| +|\W)', code)
+        if x and not x.isspace()
+    ]
     return tokens, " ".join(tokens)
 
 
