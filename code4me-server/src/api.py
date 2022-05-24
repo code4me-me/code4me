@@ -31,7 +31,9 @@ def autocomplete():
     parts = body["parts"]
     parts[-1] += "<|/ file |>"
 
+    t_before = datetime.now()
     code_completion = incoder.infill(parts, max_to_generate=64)
+    t_after = datetime.now()
     completion_token = uuid.uuid4().hex
 
     with open(f"data/{user_token}-{completion_token}.json", "w+") as f:
@@ -39,7 +41,8 @@ def autocomplete():
             "completionTimestamp": datetime.now().isoformat(),
             "triggerPoint": body.get("triggerPoint", None),
             "language": body["language"].lower(),
-            "ide": body["ide"].lower()
+            "ide": body["ide"].lower(),
+            "inferenceTime": (t_after - t_before).total_seconds() * 1000
         }))
 
     return response({
