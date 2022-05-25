@@ -22,7 +22,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.ProcessingContext;
 import com.intellij.patterns.PlatformPatterns;
 import me.code4me.plugin.Code4MeIcons;
-import me.code4me.plugin.CodeForMeBundle;
+import me.code4me.plugin.Code4MeBundle;
 import me.code4me.plugin.api.PredictionAutocompleteRequest;
 import me.code4me.plugin.api.PredictionVerifyRequest;
 import me.code4me.plugin.api.Code4MeErrorResponse;
@@ -105,7 +105,7 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         };
         doc.addDocumentListener(listener);
 
-        CodeForMeBundle.getExecutorService().schedule(() -> {
+        Code4MeBundle.getExecutorService().schedule(() -> {
             doc.removeDocumentListener(listener);
             String groundTruth = doc.getText().substring(atomicOffset.get()).split("\n")[0];
             project.getService(Code4MeApiService.class).sendCompletionData(
@@ -125,8 +125,7 @@ public class Code4MeCompletionContributor extends CompletionContributor {
             EventQueue.invokeLater(() -> NotificationGroupManager.getInstance()
                     .getNotificationGroup("Code4Me Notifications")
                     .createNotification(
-                            CodeForMeBundle.message("project-opened-title"),
-                            null,
+                            Code4MeBundle.message("project-opened-title"),
                             message,
                             NotificationType.ERROR
                     ).notify(project));

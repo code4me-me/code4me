@@ -9,6 +9,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeApiService"/>
+        <projectService serviceImplementation="me.code4me.plugin.services.Code4MeDocumentListenerService"/>
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeSettingsService"/>
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeTriggerPointsService"/>
         <notificationGroup id="Code4Me Notifications" displayType="BALLOON"/>
@@ -18,6 +19,8 @@
     </extensions>
 
     <applicationListeners>
+        <listener class="me.code4me.plugin.listeners.Code4MeDynamicPluginListener"
+                  topic="com.intellij.ide.plugins.DynamicPluginListener"/>
         <listener class="me.code4me.plugin.listeners.Code4MeProjectManagerListener"
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </applicationListeners>

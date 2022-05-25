@@ -3,6 +3,11 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Added
+- Latest IJ environment
+
+### Fixed
+- Dynamic plugin reload
 
 ## [1.0.6]
 ### Added

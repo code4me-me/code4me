@@ -9,24 +9,24 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
-public class CodeForMeBundle extends DynamicBundle {
+public class Code4MeBundle extends DynamicBundle {
 
-    private static final String PATH_TO_BUNDLE = "messages.CodeForMeBundle";
-    private static final CodeForMeBundle instance = new CodeForMeBundle();
+    private static final String PATH_TO_BUNDLE = "messages.Code4MeBundle";
+    private static final Code4MeBundle instance = new Code4MeBundle();
 
     private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     public static @Nls String message(
             @NotNull @PropertyKey(resourceBundle = PATH_TO_BUNDLE) String key,
-            Object @NotNull ... params
+            Object... params
     ) {
         return instance.getMessage(key, params);
     }
 
     @NotNull
-    public static Supplier<@Nls String> messagePointer(
+    public static Supplier<String> messagePointer(
             @NotNull @PropertyKey(resourceBundle = PATH_TO_BUNDLE) String key,
-            Object @NotNull ... params
+            Object... params
     ) {
         return instance.getLazyMessage(key, params);
     }
@@ -35,7 +35,7 @@ public class CodeForMeBundle extends DynamicBundle {
         return executorService;
     }
 
-    private CodeForMeBundle() {
+    private Code4MeBundle() {
         super(PATH_TO_BUNDLE);
     }
 }

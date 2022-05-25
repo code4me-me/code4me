@@ -1,14 +1,13 @@
 package me.code4me.plugin.dialogs;
 
 import com.intellij.openapi.ui.DialogWrapper;
-import me.code4me.plugin.CodeForMeBundle;
+import me.code4me.plugin.Code4MeBundle;
 
 import javax.annotation.Nullable;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 
@@ -20,7 +19,7 @@ public class Code4MeDialogWrapper extends DialogWrapper {
 
     public Code4MeDialogWrapper() {
         super(true);
-        setTitle(CodeForMeBundle.message("project-opened-setup-title"));
+        setTitle(Code4MeBundle.message("project-opened-setup-title"));
         init();
         pack();
         setResizable(false);
@@ -33,7 +32,7 @@ public class Code4MeDialogWrapper extends DialogWrapper {
         dialogPanel.setMinimumSize(new Dimension(330, 150));
         dialogPanel.setMaximumSize(new Dimension(330, 150));
 
-        contentLabel.setText("<html>"+ CodeForMeBundle.message("project-opened-setup-content") +"</html>");
+        contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
 
         triggerPoints.setText("Use trigger points");
 
