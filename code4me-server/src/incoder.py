@@ -78,4 +78,4 @@ def infill(parts: List[str], max_to_generate: int = 128, temperature: float = 0.
         prompt += completion
     complete.append(parts[-1])
 
-    return infills[0].strip().split("\n")[0]
+    return [prediction.strip().split("\n")[0] for prediction in infills]

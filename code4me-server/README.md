@@ -19,7 +19,7 @@ This token must be created once on the client, as a UUID v4, without dashes.
 ## /api/v1
 The current version of the API.
 
-### `POST` /api/v1/autocomplete
+### `POST` /api/v1/prediction/autocomplete
 The autocompletion endpoint.
 
 #### Request headers
@@ -30,13 +30,15 @@ Content-Type: application/json
 #### Request body
 ```
 {
-  "parts": string[],
+  "leftContext": string,
+  "rightContext": string,
   "triggerPoint": string | null,
   "language": string,
   "ide": string
 }
 ```
-- `parts`: an array of strings to autocomplete in between
+- `leftContext`: the context left of the prediction
+- `rightContext`: the context right of the prediction
 - `triggerPoint`: the trigger keyword in case a trigger point was used, null otherwise
 - `language`: language of the source file
 - `ide`: the ide the request was fired from
@@ -44,16 +46,16 @@ Content-Type: application/json
 #### Response body
 ```
 {
-  "completion": string,
-  "completionToken": string
+  "predictions": string[],
+  "verifyToken": string
 }
 ```
-- `completion`: the suggestion made by the server
-- `completionToken`: a token to be used for the `/api/v1/completion` endpoint.
+- `predictions`: the suggestion(s) made by the server
+- `verifyToken`: a token to be used for the `/api/v1/prediction/verify` endpoint.
 
-### `POST` /api/v1/completion
-The statistics endpoint.
-Called after 30 seconds from the client, such that the server can create metrics.
+### `POST` /api/v1/prediction/verify
+The verification endpoint.
+Called after 30 seconds from the client, such that the server knows the ground truth of the prediction.
 
 #### Request headers
 ```
@@ -63,14 +65,14 @@ Content-Type: application/json
 #### Request body
 ```
 {
-  "completionToken": string,
-  "completion": string,
-  "line": string
+  "verifyToken": string,
+  "chosenPrediction": string,
+  "groundTruth": string
 }
 ```
-- `completionToken`: the token from the response of `/api/v1/autocomplete`
-- `completion`: the original completion
-- `line`: the current line (partial, from the same offset as the completion)
+- `verifyToken`: the token from the response of `/api/v1/prediction/autocomplete`
+- `chosenPrediction`: the chosen prediction from the client
+- `groundTruth`: the ground truth of the prediction (the line from the same offset as the completion after 30s)
 
 #### Response body
 N/A

@@ -5,10 +5,10 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import me.code4me.plugin.api.Code4MeAutocompleteRequest;
-import me.code4me.plugin.api.Code4MeAutocompleteResponse;
-import me.code4me.plugin.api.Code4MeCompletionRequest;
-import me.code4me.plugin.api.Code4MeCompletionResponse;
+import me.code4me.plugin.api.PredictionAutocompleteRequest;
+import me.code4me.plugin.api.PredictionAutocompleteResponse;
+import me.code4me.plugin.api.PredictionVerifyRequest;
+import me.code4me.plugin.api.PredictionVerifyResponse;
 import me.code4me.plugin.api.Code4MeErrorResponse;
 import me.code4me.plugin.api.Code4MeResponse;
 import me.code4me.plugin.exceptions.AlreadyAutocompletingException;
@@ -35,8 +35,8 @@ public class Code4MeApiService {
 
     private static final Gson gson = new Gson();
     private static final String BASE_URL = "https://code4me.me/api/v1";
-    private static final String AUTOCOMPLETE_ENDPOINT = "/autocomplete";
-    private static final String COMPLETION_ENDPOINT = "/completion";
+    private static final String PREDICTION_AUTOCOMPLETE_ENDPOINT = "/prediction/autocomplete";
+    private static final String PREDICTION_VERIFY_ENDPOINT = "/prediction/verify";
 
     private final AtomicBoolean lock = new AtomicBoolean(false);
 
@@ -44,11 +44,11 @@ public class Code4MeApiService {
 
     }
 
-    public CompletableFuture<Code4MeAutocompleteResponse> fetchAutoCompletion(
+    public CompletableFuture<PredictionAutocompleteResponse> fetchAutoCompletion(
             Project project,
-            Code4MeAutocompleteRequest request
+            PredictionAutocompleteRequest request
     ) {
-        CompletableFuture<Code4MeAutocompleteResponse> future = new CompletableFuture<>();
+        CompletableFuture<PredictionAutocompleteResponse> future = new CompletableFuture<>();
 
         if (lock.getAndSet(true)) {
             future.completeExceptionally(new AlreadyAutocompletingException("You are already autocompleting!"));
@@ -62,7 +62,7 @@ public class Code4MeApiService {
                 indicator.setText("Autocompleting...");
 
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
-                    HttpPost httpPost = new HttpPost(BASE_URL + AUTOCOMPLETE_ENDPOINT);
+                    HttpPost httpPost = new HttpPost(BASE_URL + PREDICTION_AUTOCOMPLETE_ENDPOINT);
                     httpPost.addHeader("Authorization", "Bearer " + token);
                     httpPost.setEntity(new StringEntity(
                             gson.toJson(request),
@@ -75,12 +75,12 @@ public class Code4MeApiService {
                     try (CloseableHttpResponse res = client.execute(httpPost)) {
                         Code4MeResponse response = parseResponseBody(
                                 res.getEntity(),
-                                Code4MeAutocompleteResponse.class,
+                                PredictionAutocompleteResponse.class,
                                 res.getStatusLine().getStatusCode()
                         );
 
-                        if (response instanceof Code4MeAutocompleteResponse) {
-                            future.complete((Code4MeAutocompleteResponse) response);
+                        if (response instanceof PredictionAutocompleteResponse) {
+                            future.complete((PredictionAutocompleteResponse) response);
                         } else if (response instanceof Code4MeErrorResponse) {
                             future.completeExceptionally(new ApiServerException((Code4MeErrorResponse) response));
                         } else {
@@ -96,17 +96,17 @@ public class Code4MeApiService {
         return future;
     }
 
-    public CompletableFuture<Code4MeCompletionResponse> sendCompletionData(
+    public CompletableFuture<PredictionVerifyResponse> sendCompletionData(
             Project project,
-            Code4MeCompletionRequest request
+            PredictionVerifyRequest request
     ) {
-        CompletableFuture<Code4MeCompletionResponse> future = new CompletableFuture<>();
+        CompletableFuture<PredictionVerifyResponse> future = new CompletableFuture<>();
 
         String token = project.getService(Code4MeSettingsService.class).getSettings().getUserToken();
 
         ForkJoinPool.commonPool().execute(() -> {
             try (CloseableHttpClient client = HttpClients.createDefault()) {
-                HttpPost httpPost = new HttpPost(BASE_URL + COMPLETION_ENDPOINT);
+                HttpPost httpPost = new HttpPost(BASE_URL + PREDICTION_VERIFY_ENDPOINT);
                 httpPost.addHeader("Authorization", "Bearer " + token);
                 httpPost.setEntity(new StringEntity(
                         gson.toJson(request),
@@ -119,12 +119,12 @@ public class Code4MeApiService {
                 try (CloseableHttpResponse res = client.execute(httpPost)) {
                     Code4MeResponse response = parseResponseBody(
                             res.getEntity(),
-                            Code4MeCompletionResponse.class,
+                            PredictionVerifyResponse.class,
                             res.getStatusLine().getStatusCode()
                     );
 
-                    if (response instanceof Code4MeCompletionResponse) {
-                        future.complete((Code4MeCompletionResponse) response);
+                    if (response instanceof PredictionVerifyResponse) {
+                        future.complete((PredictionVerifyResponse) response);
                     } else if (response instanceof Code4MeErrorResponse) {
                         future.completeExceptionally(
                                 new RuntimeException(((Code4MeErrorResponse) response).getError())

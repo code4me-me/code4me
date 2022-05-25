@@ -23,14 +23,15 @@ import com.intellij.util.ProcessingContext;
 import com.intellij.patterns.PlatformPatterns;
 import me.code4me.plugin.Code4MeIcons;
 import me.code4me.plugin.CodeForMeBundle;
-import me.code4me.plugin.api.Code4MeAutocompleteRequest;
-import me.code4me.plugin.api.Code4MeCompletionRequest;
+import me.code4me.plugin.api.PredictionAutocompleteRequest;
+import me.code4me.plugin.api.PredictionVerifyRequest;
 import me.code4me.plugin.api.Code4MeErrorResponse;
 import me.code4me.plugin.exceptions.ApiServerException;
 import me.code4me.plugin.services.Code4MeApiService;
 import me.code4me.plugin.util.Code4MeUtil;
 import org.jetbrains.annotations.NotNull;
 import java.awt.EventQueue;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,7 +51,7 @@ public class Code4MeCompletionContributor extends CompletionContributor {
             int offset,
             String triggerPoint
     ) {
-        Code4MeAutocompleteRequest request = Code4MeAutocompleteRequest.of(
+        PredictionAutocompleteRequest request = PredictionAutocompleteRequest.of(
                 text,
                 offset,
                 triggerPoint,
@@ -59,14 +60,15 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         );
 
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {
-            String completion = res.getCompletion();
+            String[] predictions = res.getPredictions();
+            System.out.println(Arrays.toString(predictions));
             EventQueue.invokeLater(() -> {
-                if (completion == null || completion.isBlank()) {
+                if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
                     HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
                 } else {
-                    completionCache.setCompletion(completion);
+                    completionCache.setPredictions(predictions);
                     completionCache.setOffset(offset);
-                    completionCache.setCompletionToken(res.getCompletionToken());
+                    completionCache.setVerifyToken(res.getVerifyToken());
                     completionCache.setEmpty(false);
 
                     ApplicationManager.getApplication().invokeLater(() -> {
@@ -86,7 +88,13 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         });
     }
 
-    private static void checkCodeChanges(Project project, String token, String completion, int offset, Document doc) {
+    private static void checkCodeChanges(
+            Project project,
+            String verifyToken,
+            String chosenPrediction,
+            int offset,
+            Document doc
+    ) {
         AtomicInteger atomicOffset = new AtomicInteger(offset);
         DocumentListener listener = new DocumentListener() {
             @Override
@@ -100,10 +108,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
         CodeForMeBundle.getExecutorService().schedule(() -> {
             doc.removeDocumentListener(listener);
-            String line = doc.getText().substring(atomicOffset.get()).split("\n")[0];
+            String groundTruth = doc.getText().substring(atomicOffset.get()).split("\n")[0];
             project.getService(Code4MeApiService.class).sendCompletionData(
                     project,
-                    new Code4MeCompletionRequest(token, completion, line)
+                    new PredictionVerifyRequest(verifyToken, chosenPrediction, groundTruth)
             ).exceptionally(th -> {
                 showError(project, th.getCause());
                 return null;
@@ -138,19 +146,19 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 return;
             }
 
-            result.addElement(prioritize(LookupElementBuilder.create(completionCache.getCompletion())
-                    .withIcon(Code4MeIcons.PLUGIN_ICON)
-                    .withInsertHandler((cxt, item) -> {
-                        checkCodeChanges(
+            for (String prediction : completionCache.getPredictions()) {
+                result.addElement(prioritize(LookupElementBuilder.create(prediction)
+                        .withIcon(Code4MeIcons.PLUGIN_ICON)
+                        .withInsertHandler((cxt, item) -> checkCodeChanges(
                                 cxt.getProject(),
-                                completionCache.getCompletionToken(),
-                                completionCache.getCompletion(),
+                                completionCache.getVerifyToken(),
+                                prediction,
                                 completionCache.getOffset(),
                                 cxt.getDocument()
-                        );
-                    })
-                    .withTypeText("Code4Me")
-            ));
+                        ))
+                        .withTypeText("Code4Me")
+                ));
+            }
             completionCache.setEmpty(true);
         }
     }
@@ -170,24 +178,24 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
     private static class CompletionCache {
 
-        private String completion;
+        private String[] predictions;
         private int offset;
-        private String completionToken;
+        private String verifyToken;
         private boolean empty;
 
         public CompletionCache() {
-            this.completion = "";
+            this.predictions = new String[0];
             this.offset = -1;
-            this.completionToken = "";
+            this.verifyToken = "";
             this.empty = true;
         }
 
-        public void setCompletion(String completion) {
-            this.completion = completion;
+        public void setPredictions(String[] predictions) {
+            this.predictions = predictions;
         }
 
-        public String getCompletion() {
-            return completion;
+        public String[] getPredictions() {
+            return predictions;
         }
 
         public void setOffset(int offset) {
@@ -198,12 +206,12 @@ public class Code4MeCompletionContributor extends CompletionContributor {
             return offset;
         }
 
-        public void setCompletionToken(String completionToken) {
-            this.completionToken = completionToken;
+        public void setVerifyToken(String verifyToken) {
+            this.verifyToken = verifyToken;
         }
 
-        public String getCompletionToken() {
-            return completionToken;
+        public String getVerifyToken() {
+            return verifyToken;
         }
 
         public void setEmpty(boolean empty) {

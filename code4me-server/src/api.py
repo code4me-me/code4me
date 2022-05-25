@@ -5,8 +5,6 @@ from datetime import datetime
 
 from flask import Blueprint, request, Response
 
-import incoder
-import evaluation
 from limiter import limiter
 from model import Model
 
@@ -15,76 +13,89 @@ v1 = Blueprint("v1", __name__)
 os.makedirs("data", exist_ok=True)
 
 
-@v1.route("/autocomplete", methods=["POST"])
+@v1.route("/prediction/autocomplete", methods=["POST"])
 @limiter.limit("600/hour")
 def autocomplete():
     user_token, model, res = get_model()
     if res is not None:
         return res
 
-    body = request.get_json()
-    if "parts" not in body or len(body["parts"]) == 0:
-        return response({
-            "error": "No parts specified"
-        }, status=400)
-
-    parts = body["parts"]
-    parts[-1] += "<|/ file |>"
+    values, res = get_body_values(
+        request.get_json(),
+        [
+            ("leftContext", str, False),
+            ("rightContext", str, False),
+            ("triggerPoint", str, True),
+            ("language", str, False),
+            ("ide", str, False),
+        ],
+    )
+    if res is not None:
+        return res
 
     t_before = datetime.now()
-    code_completion = incoder.infill(parts, max_to_generate=64)
+    predictions = model.value[1]([
+        values["leftContext"],
+        values["rightContext"] + "<|/ file |>"
+    ])
     t_after = datetime.now()
-    completion_token = uuid.uuid4().hex
 
-    with open(f"data/{user_token}-{completion_token}.json", "w+") as f:
+    verify_token = uuid.uuid4().hex
+
+    with open(f"data/{user_token}-{verify_token}.json", "w+") as f:
         f.write(json.dumps({
             "completionTimestamp": datetime.now().isoformat(),
-            "triggerPoint": body.get("triggerPoint", None),
-            "language": body["language"].lower(),
-            "ide": body["ide"].lower(),
+            "triggerPoint": values["triggerPoint"],
+            "language": values["language"].lower(),
+            "ide": values["ide"].lower(),
+            "model": model.name,
+            "predictions": predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000
         }))
 
     return response({
-        "completion": code_completion,
-        "completionToken": completion_token
+        "predictions": predictions,
+        "verifyToken": verify_token
     })
 
 
-@v1.route("/completion", methods=["POST"])
+@v1.route("/prediction/verify", methods=["POST"])
 @limiter.limit("600/hour")
-def completion():
+def verify():
     user_token, model, res = get_model()
     if res is not None:
         return res
 
-    completion_data = request.get_json()
-    if len(completion_data) == 0:
-        return response({
-            "error": "No completion specified"
-        }, status=400)
+    values, res = get_body_values(
+        request.get_json(),
+        [
+            ("verifyToken", str, False),
+            ("chosenPrediction", str, False),
+            ("groundTruth", str, False),
+        ],
+    )
+    if res is not None:
+        return res
 
-    completion_token = completion_data["completionToken"]
-    file_path = f"data/{user_token}-{completion_token}.json"
+    verify_token = values["verifyToken"]
+    file_path = f"data/{user_token}-{verify_token}.json"
     if not os.path.exists(file_path):
         return response({
-            "error": "Invalid completion token"
+            "error": "Invalid verify token"
         }, status=400)
 
     with open(file_path, "r+") as completion_file:
-        user_completion_data = json.load(completion_file)
-        if "statisticTimestamp" in user_completion_data:
+        prediction_data = json.load(completion_file)
+        if "groundTruth" in prediction_data:
             return response({
-                "error": "Already used completion token"
+                "error": "Already used verify token"
             }, status=400)
 
-        user_completion_data["evaluation"] = evaluation.compute(
-            completion_data["line"],
-            completion_data["completion"]
-        )
+        prediction_data["chosenPrediction"] = values["chosenPrediction"]
+        prediction_data["groundTruth"] = values["groundTruth"]
 
         completion_file.seek(0)
-        completion_file.write(json.dumps(user_completion_data))
+        completion_file.write(json.dumps(prediction_data))
         completion_file.truncate()
 
     return response({
@@ -102,6 +113,29 @@ def get_model():
     user_token = authorization[len("Bearer "):]
     n = int(user_token, 16)
     return user_token, Model(n % len(Model)), None
+
+
+def get_body_values(body, keys):
+    values = {}
+    for key, obj, optional in keys:
+        value, res = get_body_value(body, key, obj, optional)
+        if res is not None:
+            return None, res
+        values[key] = value
+    return values, None
+
+
+def get_body_value(body, key, obj, optional=False):
+    if not optional and key not in body:
+        return None, response({
+            "error": f"Missing key '{key}' in request body"
+        }, status=400)
+    value = body.get(key, None)
+    if not isinstance(value, obj):
+        return None, response({
+            "error": f"Key '{key}' is not of type '{obj.__name__}'"
+        }, status=400)
+    return value, None
 
 
 def response(body, status=200):

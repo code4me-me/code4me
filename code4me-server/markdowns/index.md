@@ -15,8 +15,11 @@ TODO
 
 ## Data Collection
 The plugin works with a remote API, which requires us to send (parts) of the currently opened file to our backend server, in order to suggest autocompletions.
-However, we do **not** store any of this information server-side, it is purely used for generating an autocompletion, and calculating metrics like RougeL, BLEU score and METEOR.
-These metrics output a numeral score, so server-side not even the completion by the model will be stored.
+However, we do not store any of this information server-side, it is purely used for generating an autocompletion.
+After this request the server will return a prediction to the client.
+The prediction made by the model (the completion of the line) is stored on the server.
+In the plugin we track the position of the completion which allows us to send the ground truth (possibly changed version of the prediction) back to the server after 30 seconds.
+The ground truth is stored and compared to the initial prediction using different evaluation metrics to evaluate the autocompletion model.
 
 ## Source Code
 The source code for the IDE plugins and the API webserver can be found at our GitHub [repository](https://github.com/code4me-me/code4me).
