@@ -42,16 +42,17 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         extend(CompletionType.BASIC, PlatformPatterns.psiElement(), new Code4MeCompletionProvider());
     }
 
-    public static void suggestCompletionFromParts(
+    public static void suggestCompletion(
             Project project,
             Editor editor,
             Document doc,
+            String text,
             int offset,
-            String[] parts,
             String triggerPoint
     ) {
-        Code4MeAutocompleteRequest request = new Code4MeAutocompleteRequest(
-                parts,
+        Code4MeAutocompleteRequest request = Code4MeAutocompleteRequest.of(
+                text,
+                offset,
                 triggerPoint,
                 Code4MeUtil.getLanguage(project, doc),
                 "jetbrains"

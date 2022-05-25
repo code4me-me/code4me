@@ -54,6 +54,8 @@ public class Code4MeDocumentListener implements DocumentListener {
                     continue;
                 }
                 break;
+            } else if (c == '\n') {
+                break;
             } else {
                 initSpaces = false;
             }
@@ -62,10 +64,7 @@ public class Code4MeDocumentListener implements DocumentListener {
             String triggerPoint = new String(word).trim();
             Boolean trailingSpace = triggerPointsService.getTriggerPoint(triggerPoint);
             if (trailingSpace != null && (!trailingSpace || spaces > 0)) {
-                Code4MeCompletionContributor.suggestCompletionFromParts(project, editor, doc, offsetPlusOne, new String[] {
-                        text.substring(0, offsetPlusOne),
-                        text.substring(offsetPlusOne)
-                }, triggerPoint);
+                Code4MeCompletionContributor.suggestCompletion(project, editor, doc, text, offsetPlusOne, triggerPoint);
                 break;
             }
             i++;

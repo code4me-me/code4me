@@ -25,11 +25,6 @@ public class CodeCompleteAction extends AnAction {
         CaretModel caretModel = editor.getCaretModel();
         int offset = caretModel.getOffset();
 
-        String[] parts = {
-                text.substring(0, offset),
-                text.substring(offset)
-        };
-
-        Code4MeCompletionContributor.suggestCompletionFromParts(project, editor, doc, offset, parts, null);
+        Code4MeCompletionContributor.suggestCompletion(project, editor, doc, text, offset, null);
     }
 }
