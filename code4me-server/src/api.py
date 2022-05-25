@@ -131,7 +131,7 @@ def get_body_value(body, key, obj, optional=False):
             "error": f"Missing key '{key}' in request body"
         }, status=400)
     value = body.get(key, None)
-    if not isinstance(value, obj):
+    if value is not None and not isinstance(value, obj):
         return None, response({
             "error": f"Key '{key}' is not of type '{obj.__name__}'"
         }, status=400)

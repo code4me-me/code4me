@@ -68,12 +68,14 @@ def infill(parts: List[str], max_to_generate: int = 128, temperature: float = 0.
         complete.append(part)
         prompt += make_sentinel(sentinel_ix)
         completion = generate(prompt, max_to_generate, temperature)
-        completion = completion[len(prompt):]
         if EOM not in completion:
             completion += EOM
+        real_infill = completion[completion.index("<|mask:1|><|mask:0|>") + len("<|mask:1|><|mask:0|>"):completion.index(EOM)]
+
+        completion = completion[len(prompt):]
         completion = completion[:completion.index(EOM) + len(EOM)]
         infilled = completion[:-len(EOM)]
-        infills.append(infilled)
+        infills.append(real_infill)
         complete.append(infilled)
         prompt += completion
     complete.append(parts[-1])

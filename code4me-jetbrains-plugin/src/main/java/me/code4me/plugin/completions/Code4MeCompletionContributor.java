@@ -61,7 +61,6 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {
             String[] predictions = res.getPredictions();
-            System.out.println(Arrays.toString(predictions));
             EventQueue.invokeLater(() -> {
                 if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
                     HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");

@@ -24,15 +24,23 @@ public class Code4MeSettingsService {
 
         String settingsJson = PasswordSafe.getInstance().getPassword(credentialAttributes);
         if (settingsJson == null) {
-            this.settings = new Settings(UUID.randomUUID().toString().replace("-", ""), true);
+            this.settings = new Settings(generateToken(), true);
             this.save();
         } else {
             this.settings = gson.fromJson(settingsJson, Settings.class);
+            if (this.settings.getUserToken() == null) {
+                this.settings.setUserToken(generateToken());
+                this.save();
+            }
         }
     }
 
     public Settings getSettings() {
         return settings;
+    }
+
+    private String generateToken() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     public void save() {
@@ -41,12 +49,16 @@ public class Code4MeSettingsService {
 
     public static class Settings {
 
-        private final String userToken;
+        private String userToken;
         private boolean triggerPoints;
 
         public Settings(String userToken, boolean triggerPoints) {
             this.userToken = userToken;
             this.triggerPoints = triggerPoints;
+        }
+
+        public void setUserToken(String userToken) {
+            this.userToken = userToken;
         }
 
         public String getUserToken() {
