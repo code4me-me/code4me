@@ -9,17 +9,17 @@ import rand from 'csprng';
 import fetch from 'node-fetch';
 
 export function activate(extensionContext: ExtensionContext) {
-	if (!extensionContext.globalState.get('codefill-uuid')) {
-		extensionContext.globalState.update('codefill-uuid', rand(128, 16));
+	if (!extensionContext.globalState.get('code4me-uuid')) {
+		extensionContext.globalState.update('code4me-uuid', rand(128, 16));
 	}
 
-	const codeFillUuid: string = extensionContext.globalState.get('codefill-uuid')!;
+	const code4MeUuid: string = extensionContext.globalState.get('code4me-uuid')!;
 
 	extensionContext.subscriptions.push(vscode.commands.registerCommand('verifyInsertion', verifyInsertion));
 
 	extensionContext.subscriptions.push(vscode.languages.registerCompletionItemProvider('python', {
 		async provideCompletionItems(document, position, token, context) {
-			const jsonResponse = await callToAPIAndRetrieve(document, position, codeFillUuid);
+			const jsonResponse = await callToAPIAndRetrieve(document, position, code4MeUuid);
 			if (!jsonResponse) return undefined;
 
 			const listPredictionItems = jsonResponse.predictions;
@@ -34,7 +34,7 @@ export function activate(extensionContext: ExtensionContext) {
 				completionItem.command = {
 					command: 'verifyInsertion',
 					title: 'Verify Insertion',
-					arguments: [position, prediction, completionToken, codeFillUuid]
+					arguments: [position, prediction, completionToken, code4MeUuid]
 				};
 				return completionItem;
 			});
@@ -118,7 +118,7 @@ function splitTextAtCursor(nCharacters: number, position: vscode.Position): stri
 	return [leftText.substring(-nCharacters), rightText.substring(0, nCharacters)];
 }
 
-async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, codeFillUuid: string): Promise<any | undefined> {
+async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string): Promise<any | undefined> {
 	const textArray = splitTextAtCursor(2048, position);
 	const triggerPoint = getTriggerCharacter(document, position);
 	if (triggerPoint === undefined) return undefined;
@@ -140,7 +140,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
 			),
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': 'Bearer ' + codeFillUuid
+				'Authorization': 'Bearer ' + code4MeUuid
 			}
 		});
 
