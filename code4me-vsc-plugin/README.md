@@ -1,4 +1,4 @@
-# Code4Me - VSC Extension
+# Code4Me
 
 <!-- Plugin description -->
 **Code4Me** provides language model based code completion. Code4Me predicts statement (line) completion and is seemlessly integrated with Visual Studio Code's code completion. The code suggestions from Code4Me are denoted with a unicode "&#10094;&#65295;&#10095;" representation of the logo. Code for me can be triggers automatically and can be prompted manually by pressing the keybind for autocompletion.
