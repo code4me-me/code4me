@@ -1,0 +1,44 @@
+name: Release VSC Plugin
+on:
+  push:
+    branches: [main]
+    paths:
+      - code4me-vsc-plugin/**
+
+env:
+  WORKING_DIRECTORY: code4me-vsc-plugin
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Commit Message
+        id: check-commit
+        run: |
+          if [[ ${{ github.event.head_commit.message }} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\-[a-zA-Z]+)?$ ]]; then
+              echo ::set-output name=isSemver::true
+          fi
+      - uses: actions/checkout@v3
+        if: steps.check-tag.outputs.isSemver == 'true'
+      - uses: actions/setup-node@v3
+        if: steps.check-tag.outputs.isSemver == 'true'
+        with:
+          node-version: 16
+          cache: 'npm'
+          cache-dependency-path: code4me-vsc-plugin/package-lock.json
+
+      - name: Install the dependencies
+        if: steps.check-tag.outputs.isSemver == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm i
+
+      - name: Install vsce
+        if: steps.check-tag.outputs.isSemver == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm i -g vsce
+
+      - name: Publish
+        if: steps.check-tag.outputs.isSemver == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: vsce publish -p ${{ secrets.VSCE_PAT }}
