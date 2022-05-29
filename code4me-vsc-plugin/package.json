@@ -1,0 +1,59 @@
+{
+	"name": "code4me-plugin",
+	"displayName": "Code4Me",
+	"description": "Language model code completion.",
+	"author": "Code4Me",
+	"license": "Apache-2.0",
+	"version": "1.0.0",
+	"categories": [
+		"Machine Learning",
+		"Programming Languages",
+		"Education"
+	],
+	"keywords": [
+		"AutoComplete",
+		"Code Completion",
+		"Python",
+		"Language Model"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/code4me-me/code4me"
+	},
+	"icon": "pluginIcon.png",
+	"publisher": "Code4Me",
+	"engines": {
+		"vscode": "^1.47.0"
+	},
+	"activationEvents": [
+		"editor.action.triggerSuggest",
+		"onLanguage:python"
+	],
+	"main": "./out/extension.js",
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint . --ext .ts,.tsx",
+		"watch": "tsc -watch -p ./",
+		"download-api": "vscode-dts dev",
+		"postdownload-api": "vscode-dts main",
+		"postinstall": "npm run download-api"
+	},
+	"devDependencies": {
+		"@types/csprng": "^0.1.2",
+		"@types/node": "^12.12.0",
+		"@types/node-fetch": "^2.6.1",
+		"@types/uuid": "^8.3.4",
+		"@types/vscode": "^1.47.0",
+		"@typescript-eslint/eslint-plugin": "^5.19.0",
+		"@typescript-eslint/parser": "^5.19.0",
+		"eslint": "^8.13.0",
+		"typescript": "^4.6.3",
+		"vscode-dts": "^0.3.3"
+	},
+	"dependencies": {
+		"csprng": "^0.1.2",
+		"node-fetch": "^2.6.7",
+		"uuid": "^8.3.2"
+	}
+}

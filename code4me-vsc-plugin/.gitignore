@@ -1,0 +1,6 @@
+out
+node_modules
+.vscode-test
+vscode.d.test
+vscode.d.ts
+vscode.proposed.inlineCompletions.d
