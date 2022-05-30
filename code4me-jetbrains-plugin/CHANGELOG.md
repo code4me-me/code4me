@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+
+## [1.0.7]
 ### Added
 - Latest IJ environment
 
