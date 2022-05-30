@@ -21,7 +21,7 @@ For the purpose of evaluating the models' predictions, we only store the suggest
 
 The plugin does not collect personal data nor the segment sent. The plugin does collect the following data:
 
-* Suggest autocompletion.
+* Suggested autocompletion.
 * Verification of the autocompletion.
   * The plugin tracks the line the code was inserted and sends that line to the server after 30 seconds.
 * Inference time of completion.
