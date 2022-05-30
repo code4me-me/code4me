@@ -1,7 +1,7 @@
 # Code4Me
 Code4Me provides language model based code completion. Code4Me predicts statement (line) completion and is available for both Jetbrains and Visual Studio Code. The code suggestions from Code4Me can be recognised by the logo in the suggestion menu. Code4Me triggers (on specific trigger characters) automatically or it can be prompted manually by pressing the keybind. This keybind differs per IDE.
 
-Code4Me does not hinder native auto completion or other extensions. For more information, visit the Code4Me website.
+Code4Me does not hinder native auto completion or other extensions.
 
 ## Installation
 The plugin is available on both marketplaces. You can download them by either clicking the link in your browser or looking up 'Code4Me' in the integrated marketplace of your IDE.
