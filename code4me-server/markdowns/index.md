@@ -22,7 +22,7 @@ The plugin does not collect personal data nor the full segment sent. The plugin 
   * The plugin tracks the line the code was inserted and sends that line to the server after a timeout.
 * Inference time of completion.
 
-Furthermore, Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the bachelor thesis. By using Code4Me you give permission for the data collection.
+Furthermore, Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the study. By using Code4Me you give permission for the data collection.
 
 ## Source Code
 The source code for the IDE plugins and the API webserver can be found at our GitHub [repository](https://github.com/code4me-me/code4me).
