@@ -13,7 +13,8 @@ The Code4Me plugin can be found in the [JetBrains Marketplace](https://plugins.j
 The Code4Me plugin can be found in the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Code4Me.code4me-plugin).
 
 ## Data Collection
-The plugin works with a remote API in order to suggest autocompletions. After this request the server will return a prediction to the client. The remote API requires a segment of the 2048 characters. Thus this limited segment is sent to the TU Delft backend server. We do not store the entire segment. The inserted line is tracked over the course of 30 seconds and then returned to the server and then stored. This line has to be stored to use different evaluation metrics to properly asses the autocompletion model.
+The plugin works with a remote API in order to suggest autocompletions. After triggering the autocompletion (automatically or manually), the client's request is sent to the server. Running the ML-based model, the server returns a prediction in response to the client. The remote API requires a segment of the current document (close left context at the trigger point). This limited segment is sent to the backend server only for prediction and will not be stored on our server. 
+For the purpose of evaluating the models' predictions, we only store the suggestion made by the ML-based models at each trigger point and compare it against the accepted prediction by users (collected after 30 seconds). 
 
 The plugin does not collect personal data nor the full segment sent. The plugin does collect the following data:
 
