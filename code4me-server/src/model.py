@@ -3,8 +3,8 @@ import incoder
 
 
 class Model(Enum):
-    InCoder = (0, lambda parts: incoder.infill(parts, max_to_generate=64))
-    CodeFill = (1, lambda parts: incoder.infill(parts, max_to_generate=64))
+    InCoder = (0, incoder.generate)
+    CodeFill = (1, incoder.generate)
 
     @classmethod
     def _missing_(cls, value):

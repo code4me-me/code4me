@@ -2,26 +2,24 @@ import os
 from typing import List
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteriaList, StoppingCriteria
 
 model_name = "facebook/incoder-1B"
-kwargs = {}
-CUDA = os.getenv("CODE4ME_CUDA", "False") == "True"
-
-print("loading model")
-model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
-print("loading tokenizer")
+model = AutoModelForCausalLM.from_pretrained(model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-print("loading complete")
 
+CUDA = os.getenv("CODE4ME_CUDA", "False") == "True"
 if CUDA:
-    # if you plan to fine-tune the model, you should not use half precision.
     model = model.half().cuda()
 
 # signals the start of a document
 BOS = "<|endoftext|>"
 # signals the end of a generated infill
 EOM = "<|endofmask|>"
+# signals the end of a file
+EOF = "<|/ file |>"
+# Until the end of the line
+stop_tokens = [205, 284, 353, 536, 994, 3276, 4746, 15471, 16027, 28602, 40289, 43275, 50517]
 
 
 def make_sentinel(i):
@@ -29,55 +27,43 @@ def make_sentinel(i):
     return f"<|mask:{i}|>"
 
 
-def generate(input: str, max_to_generate: int = 128, temperature: float = 0.2):
-    input_ids = tokenizer(input, return_tensors="pt").input_ids
+class StatementStoppingCriteria(StoppingCriteria):
+
+    def __init__(self, init_length: int, stop_tokens: List[int]):
+        self.init_length = init_length
+        self.stop_tokens = stop_tokens
+
+    def __contains_stop_token(self, tokens):
+        for token in tokens:
+            if token in self.stop_tokens:
+                return True
+        return False
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        return self.__contains_stop_token(input_ids[0][self.init_length:])
+
+
+def generate(left_context: str, right_context: str):
+    prompt = left_context + make_sentinel(0) + right_context + EOF + make_sentinel(1) + make_sentinel(0)
+    tokens = tokenizer(prompt, return_tensors="pt")
     if CUDA:
-        input_ids = input_ids.cuda()
-    max_length = max_to_generate + input_ids.flatten().size(0)
-    if max_length > 2048:
-        print("warning: max_length {} is greater than the context window {}".format(max_length, 2048))
+        tokens = tokens.to("cuda")
+    token_count = len(tokens.input_ids[0])
+
+    stopping_criteria = StoppingCriteriaList()
+    stopping_criteria.append(StatementStoppingCriteria(token_count, stop_tokens))
+
     with torch.no_grad():
-        output = model.generate(input_ids=input_ids, do_sample=True, top_p=0.95, temperature=temperature,
-                                max_length=max_length)
-    detok_hypo_str = tokenizer.decode(output.flatten())
-    if detok_hypo_str.startswith(BOS):
-        detok_hypo_str = detok_hypo_str[len(BOS):]
-    return detok_hypo_str
+        completion = model.generate(
+            **tokens,
+            do_sample=True,
+            top_p=0.95,
+            temperature=0.2,
+            max_length=token_count + 128,
+            stopping_criteria=stopping_criteria
+        )[0][token_count:]
 
-
-def infill(parts: List[str], max_to_generate: int = 128, temperature: float = 0.2, extra_sentinel: bool = True):
-
-    assert isinstance(parts, list)
-
-    ## (1) build the prompt
-    if len(parts) == 1:
-        prompt = parts[0]
-    else:
-        prompt = ""
-        # encode parts separated by sentinel
-        for sentinel_ix, part in enumerate(parts):
-            prompt += part
-            if extra_sentinel or (sentinel_ix < len(parts) - 1):
-                prompt += make_sentinel(sentinel_ix)
-
-    infills = []
-    complete = []
-
-    ## (2) generate infills
-    for sentinel_ix, part in enumerate(parts[:-1]):
-        complete.append(part)
-        prompt += make_sentinel(sentinel_ix)
-        completion = generate(prompt, max_to_generate, temperature)
-        if EOM not in completion:
-            completion += EOM
-        real_infill = completion[completion.index("<|mask:1|><|mask:0|>") + len("<|mask:1|><|mask:0|>"):completion.index(EOM)]
-
-        completion = completion[len(prompt):]
-        completion = completion[:completion.index(EOM) + len(EOM)]
-        infilled = completion[:-len(EOM)]
-        infills.append(real_infill)
-        complete.append(infilled)
-        prompt += completion
-    complete.append(parts[-1])
-
-    return [prediction.strip().split("\n")[0] for prediction in infills]
+    decoded_completion = tokenizer.decode(completion).strip().split("\n")[0]
+    while decoded_completion.endswith(EOM):
+        decoded_completion = decoded_completion[:-len(EOM)]
+    return [decoded_completion]

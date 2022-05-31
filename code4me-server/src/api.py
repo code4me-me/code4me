@@ -34,10 +34,7 @@ def autocomplete():
         return res
 
     t_before = datetime.now()
-    predictions = model.value[1]([
-        values["leftContext"],
-        values["rightContext"] + "<|/ file |>"
-    ])
+    predictions = model.value[1](values["leftContext"], values["rightContext"])
     t_after = datetime.now()
 
     verify_token = uuid.uuid4().hex
