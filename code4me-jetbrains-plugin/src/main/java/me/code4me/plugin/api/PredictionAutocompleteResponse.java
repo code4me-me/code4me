@@ -21,7 +21,7 @@ public class PredictionAutocompleteResponse extends Code4MeResponse {
         return verifyToken;
     }
 
-    public boolean getSurvey() {
+    public boolean isSurvey() {
         return survey;
     }
 }

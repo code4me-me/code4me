@@ -29,13 +29,15 @@ import me.code4me.plugin.api.PredictionVerifyRequest;
 import me.code4me.plugin.api.Code4MeErrorResponse;
 import me.code4me.plugin.exceptions.ApiServerException;
 import me.code4me.plugin.services.Code4MeApiService;
+import me.code4me.plugin.services.Code4MeSettingsService;
 import me.code4me.plugin.util.Code4MeUtil;
 import org.jetbrains.annotations.NotNull;
 import java.awt.EventQueue;
 import java.util.Arrays;
-import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class Code4MeCompletionContributor extends CompletionContributor {
 
@@ -64,10 +66,9 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {
             String[] predictions = res.getPredictions();
 
-
-
-//            if(res.getSurvey()) {
-            if(true) {
+            Code4MeSettingsService settingsService = project.getService(Code4MeSettingsService.class);
+            Code4MeSettingsService.Settings settings = settingsService.getSettings();
+            if (!settings.isIgnoringSurvey() && res.isSurvey()) {
                 NotificationGroupManager.getInstance()
                         .getNotificationGroup("Code4Me Notifications")
                         .createNotification(
@@ -79,7 +80,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                                 () -> project.getService(Code4MeApiService.class).redirectToCode4MeSurvey(project))
                         ).addAction(NotificationAction.createSimple(
                                 Code4MeBundle.message("survey-cancel-action"),
-                                () -> project.getService(Code4MeApiService.class).redirectToCode4MeSurvey(project))
+                                () -> {
+                                    settings.setIgnoringSurvey(true);
+                                    settingsService.save();
+                                })
                         ).notify(project);
             }
 
@@ -87,12 +91,12 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
                     HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
                 } else {
+                    String verifyToken = res.getVerifyToken();
                     completionCache.setPredictions(predictions);
                     completionCache.setOffset(offset);
-                    completionCache.setVerifyToken(res.getVerifyToken());
+                    completionCache.setVerifyToken(verifyToken);
+                    completionCache.setTimeoutSupplier(() -> checkCodeChanges(project, verifyToken, null, offset, doc));
                     completionCache.setEmpty(false);
-                    completionCache.setProject(project);
-                    completionCache.setDocument(doc);
 
                     ApplicationManager.getApplication().invokeLater(() -> {
                         CodeCompletionHandlerBase handler = CodeCompletionHandlerBase.createHandler(
@@ -111,10 +115,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         });
     }
 
-    private static Future<?> checkCodeChanges(
+    private static ScheduledFuture<?> checkCodeChanges(
             Project project,
             String verifyToken,
-            String[] chosenPrediction,
+            String chosenPrediction,
             int offset,
             Document doc
     ) {
@@ -168,22 +172,17 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 return;
             }
 
-            Project project = completionCache.getProject();
-            int offset = completionCache.getOffset();
-            String verifyToken = completionCache.getVerifyToken();
-            Document doc = completionCache.getDocument();
-
-            Future<?> dataRequest = checkCodeChanges(project, verifyToken, completionCache.getPredictions(), offset, doc);
+            ScheduledFuture<?> dataRequest = completionCache.getTimeoutSupplier().get();
 
             for (String prediction : completionCache.getPredictions()) {
                 result.addElement(prioritize(LookupElementBuilder.create(prediction)
                         .withIcon(Code4MeIcons.PLUGIN_ICON)
                         .withInsertHandler((cxt, item) -> {
-                            dataRequest.cancel(true);
+                            if (!dataRequest.cancel(true)) return;
                             checkCodeChanges(
                                     cxt.getProject(),
                                     completionCache.getVerifyToken(),
-                                    new String[]{prediction},
+                                    prediction,
                                     completionCache.getOffset(),
                                     cxt.getDocument()
                             );
@@ -214,16 +213,14 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         private int offset;
         private String verifyToken;
         private boolean empty;
-        private Project project;
-        private Document doc;
+        private Supplier<ScheduledFuture<?>> timeoutSupplier;
 
         public CompletionCache() {
             this.predictions = new String[0];
             this.offset = -1;
             this.verifyToken = "";
             this.empty = true;
-            this.project = null;
-            this.doc = null;
+            this.timeoutSupplier = null;
         }
 
         public void setPredictions(String[] predictions) {
@@ -258,20 +255,12 @@ public class Code4MeCompletionContributor extends CompletionContributor {
             return empty;
         }
 
-        public Project getProject() {
-            return project;
+        public void setTimeoutSupplier(Supplier<ScheduledFuture<?>> timeoutSupplier) {
+            this.timeoutSupplier = timeoutSupplier;
         }
 
-        public void setProject(Project project) {
-            this.project = project;
-        }
-
-        public Document getDocument() {
-            return doc;
-        }
-
-        public void setDocument(Document doc) {
-            this.doc = doc;
+        public Supplier<ScheduledFuture<?>> getTimeoutSupplier() {
+            return timeoutSupplier;
         }
     }
 }
