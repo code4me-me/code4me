@@ -24,6 +24,7 @@ import com.intellij.util.ProcessingContext;
 import com.intellij.patterns.PlatformPatterns;
 import me.code4me.plugin.Code4MeIcons;
 import me.code4me.plugin.Code4MeBundle;
+import me.code4me.plugin.Code4MeScheduledThreadPoolExecutor;
 import me.code4me.plugin.api.PredictionAutocompleteRequest;
 import me.code4me.plugin.api.PredictionVerifyRequest;
 import me.code4me.plugin.api.Code4MeErrorResponse;
@@ -133,9 +134,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         };
         doc.addDocumentListener(listener);
 
-        return Code4MeBundle.getExecutorService().schedule(() -> {
+        return Code4MeScheduledThreadPoolExecutor.getInstance().schedule(() -> {
             doc.removeDocumentListener(listener);
-            String groundTruth = doc.getText().substring(atomicOffset.get()).split("\n")[0];
+            String[] lines = doc.getText().substring(atomicOffset.get()).split("\n");
+            String groundTruth = lines.length == 0 ? "" : lines[0];
             project.getService(Code4MeApiService.class).sendCompletionData(
                     project,
                     new PredictionVerifyRequest(verifyToken, chosenPrediction, groundTruth)
