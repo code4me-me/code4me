@@ -157,4 +157,10 @@ public class Code4MeApiService {
             }
         }
     }
+
+    public void redirectToCode4MeSurvey(Project project) {
+        String userToken = project.getService(Code4MeSettingsService.class).getSettings().getUserToken();
+
+        System.out.println("redirecting...");
+    }
 }
