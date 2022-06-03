@@ -24,7 +24,7 @@ services:
           devices:
             - capabilities: [gpu]
     volumes:
-      - ./code4me-server/.cache:/codeforme/.cache
+      - ./.cache:/codeforme/.cache
       - ./code4me-server/users.json:/codeforme/users.json
       - ./code4me-server/nltk_data:/codeforme/nltk_data
       - ./code4me-server/data:/codeforme/data
