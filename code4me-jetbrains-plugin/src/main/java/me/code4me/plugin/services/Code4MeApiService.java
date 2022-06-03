@@ -1,6 +1,7 @@
 package me.code4me.plugin.services;
 
 import com.google.gson.Gson;
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -37,6 +38,7 @@ public class Code4MeApiService {
     private static final String BASE_URL = "https://code4me.me/api/v1";
     private static final String PREDICTION_AUTOCOMPLETE_ENDPOINT = "/prediction/autocomplete";
     private static final String PREDICTION_VERIFY_ENDPOINT = "/prediction/verify";
+    private static final String SURVEY_ENDPOINT = "/survey?user_id=%s";
 
     private final AtomicBoolean lock = new AtomicBoolean(false);
 
@@ -156,5 +158,10 @@ public class Code4MeApiService {
                 return new Code4MeErrorResponse(new String(in.readAllBytes(), StandardCharsets.UTF_8), statusCode);
             }
         }
+    }
+
+    public void redirectToCode4MeSurvey(Project project) {
+        String userToken = project.getService(Code4MeSettingsService.class).getSettings().getUserToken();
+        BrowserUtil.browse(BASE_URL + String.format(SURVEY_ENDPOINT, userToken));
     }
 }

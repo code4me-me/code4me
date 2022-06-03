@@ -5,16 +5,12 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.PropertyKey;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
 public class Code4MeBundle extends DynamicBundle {
 
     private static final String PATH_TO_BUNDLE = "messages.Code4MeBundle";
     private static final Code4MeBundle instance = new Code4MeBundle();
-
-    private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     public static @Nls String message(
             @NotNull @PropertyKey(resourceBundle = PATH_TO_BUNDLE) String key,
@@ -29,10 +25,6 @@ public class Code4MeBundle extends DynamicBundle {
             Object... params
     ) {
         return instance.getLazyMessage(key, params);
-    }
-
-    public static ScheduledExecutorService getExecutorService() {
-        return executorService;
     }
 
     private Code4MeBundle() {

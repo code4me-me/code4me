@@ -67,7 +67,7 @@ def verify():
         request.get_json(),
         [
             ("verifyToken", str, False),
-            ("chosenPrediction", str, False),
+            ("chosenPrediction", str, True),
             ("groundTruth", str, False),
         ],
     )

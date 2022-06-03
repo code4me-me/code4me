@@ -66,7 +66,7 @@ Content-Type: application/json
 ```
 {
   "verifyToken": string,
-  "chosenPrediction": string,
+  "chosenPrediction": string | null,
   "groundTruth": string
 }
 ```

@@ -10,6 +10,7 @@ import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
@@ -23,17 +24,21 @@ import com.intellij.util.ProcessingContext;
 import com.intellij.patterns.PlatformPatterns;
 import me.code4me.plugin.Code4MeIcons;
 import me.code4me.plugin.Code4MeBundle;
+import me.code4me.plugin.Code4MeScheduledThreadPoolExecutor;
 import me.code4me.plugin.api.PredictionAutocompleteRequest;
 import me.code4me.plugin.api.PredictionVerifyRequest;
 import me.code4me.plugin.api.Code4MeErrorResponse;
 import me.code4me.plugin.exceptions.ApiServerException;
 import me.code4me.plugin.services.Code4MeApiService;
+import me.code4me.plugin.services.Code4MeSettingsService;
 import me.code4me.plugin.util.Code4MeUtil;
 import org.jetbrains.annotations.NotNull;
 import java.awt.EventQueue;
 import java.util.Arrays;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class Code4MeCompletionContributor extends CompletionContributor {
 
@@ -61,13 +66,37 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {
             String[] predictions = res.getPredictions();
+
+            Code4MeSettingsService settingsService = project.getService(Code4MeSettingsService.class);
+            Code4MeSettingsService.Settings settings = settingsService.getSettings();
+            if (!settings.isIgnoringSurvey() && res.isSurvey()) {
+                NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Code4Me Notifications")
+                        .createNotification(
+                                Code4MeBundle.message("survey-title"),
+                                Code4MeBundle.message("survey-content"),
+                                NotificationType.INFORMATION
+                        ).addAction(NotificationAction.createSimple(
+                                Code4MeBundle.message("survey-redirect-action"),
+                                () -> project.getService(Code4MeApiService.class).redirectToCode4MeSurvey(project))
+                        ).addAction(NotificationAction.createSimple(
+                                Code4MeBundle.message("survey-cancel-action"),
+                                () -> {
+                                    settings.setIgnoringSurvey(true);
+                                    settingsService.save();
+                                })
+                        ).notify(project);
+            }
+
             EventQueue.invokeLater(() -> {
                 if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
                     HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
                 } else {
+                    String verifyToken = res.getVerifyToken();
                     completionCache.setPredictions(predictions);
                     completionCache.setOffset(offset);
-                    completionCache.setVerifyToken(res.getVerifyToken());
+                    completionCache.setVerifyToken(verifyToken);
+                    completionCache.setTimeoutSupplier(() -> checkCodeChanges(project, verifyToken, null, offset, doc));
                     completionCache.setEmpty(false);
 
                     ApplicationManager.getApplication().invokeLater(() -> {
@@ -87,7 +116,7 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         });
     }
 
-    private static void checkCodeChanges(
+    private static ScheduledFuture<?> checkCodeChanges(
             Project project,
             String verifyToken,
             String chosenPrediction,
@@ -105,9 +134,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         };
         doc.addDocumentListener(listener);
 
-        Code4MeBundle.getExecutorService().schedule(() -> {
+        return Code4MeScheduledThreadPoolExecutor.getInstance().schedule(() -> {
             doc.removeDocumentListener(listener);
-            String groundTruth = doc.getText().substring(atomicOffset.get()).split("\n")[0];
+            String[] lines = doc.getText().substring(atomicOffset.get()).split("\n");
+            String groundTruth = lines.length == 0 ? "" : lines[0];
             project.getService(Code4MeApiService.class).sendCompletionData(
                     project,
                     new PredictionVerifyRequest(verifyToken, chosenPrediction, groundTruth)
@@ -144,16 +174,21 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 return;
             }
 
+            ScheduledFuture<?> dataRequest = completionCache.getTimeoutSupplier().get();
+
             for (String prediction : completionCache.getPredictions()) {
                 result.addElement(prioritize(LookupElementBuilder.create(prediction)
                         .withIcon(Code4MeIcons.PLUGIN_ICON)
-                        .withInsertHandler((cxt, item) -> checkCodeChanges(
-                                cxt.getProject(),
-                                completionCache.getVerifyToken(),
-                                prediction,
-                                completionCache.getOffset(),
-                                cxt.getDocument()
-                        ))
+                        .withInsertHandler((cxt, item) -> {
+                            if (!dataRequest.cancel(true)) return;
+                            checkCodeChanges(
+                                    cxt.getProject(),
+                                    completionCache.getVerifyToken(),
+                                    prediction,
+                                    completionCache.getOffset(),
+                                    cxt.getDocument()
+                            );
+                        })
                         .withTypeText("Code4Me")
                 ));
             }
@@ -180,12 +215,14 @@ public class Code4MeCompletionContributor extends CompletionContributor {
         private int offset;
         private String verifyToken;
         private boolean empty;
+        private Supplier<ScheduledFuture<?>> timeoutSupplier;
 
         public CompletionCache() {
             this.predictions = new String[0];
             this.offset = -1;
             this.verifyToken = "";
             this.empty = true;
+            this.timeoutSupplier = null;
         }
 
         public void setPredictions(String[] predictions) {
@@ -218,6 +255,14 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
         public boolean isEmpty() {
             return empty;
+        }
+
+        public void setTimeoutSupplier(Supplier<ScheduledFuture<?>> timeoutSupplier) {
+            this.timeoutSupplier = timeoutSupplier;
+        }
+
+        public Supplier<ScheduledFuture<?>> getTimeoutSupplier() {
+            return timeoutSupplier;
         }
     }
 }
