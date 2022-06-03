@@ -52,7 +52,8 @@ def autocomplete():
 
     return response({
         "predictions": predictions,
-        "verifyToken": verify_token
+        "verifyToken": verify_token,
+        "survey": False  # TODO: survey
     })
 
 

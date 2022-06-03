@@ -47,11 +47,13 @@ Content-Type: application/json
 ```
 {
   "predictions": string[],
-  "verifyToken": string
+  "verifyToken": string,
+  "survey: boolean
 }
 ```
 - `predictions`: the suggestion(s) made by the server
 - `verifyToken`: a token to be used for the `/api/v1/prediction/verify` endpoint.
+- `survey`: whether a survey should be prompted to the user
 
 ### `POST` /api/v1/prediction/verify
 The verification endpoint.
