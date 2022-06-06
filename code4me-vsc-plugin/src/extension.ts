@@ -3,6 +3,8 @@ import { ExtensionContext } from 'vscode';
 import rand from 'csprng';
 import fetch from 'node-fetch';
 
+let promptSurvey = true;
+
 export function activate(extensionContext: ExtensionContext) {
   if (!extensionContext.globalState.get('code4me-uuid')) {
     extensionContext.globalState.update('code4me-uuid', rand(128, 16));
@@ -21,15 +23,18 @@ export function activate(extensionContext: ExtensionContext) {
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
 
+      if (jsonResponse.survey && promptSurvey) doPromptSurvey();
 
+      const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
       return listPredictionItems.map((prediction: string) => {
         const completionItem = new vscode.CompletionItem('\u276E\uff0f\u276f: ' + prediction);
         completionItem.sortText = '0.0000';
+        if (prediction == "") return undefined;
         completionItem.insertText = prediction;
         completionItem.command = {
           command: 'verifyInsertion',
           title: 'Verify Insertion',
-          arguments: [position, prediction, completionToken, code4MeUuid]
+          arguments: [position, prediction, completionToken, code4MeUuid, timer]
         };
         return completionItem;
       });
@@ -37,9 +42,20 @@ export function activate(extensionContext: ExtensionContext) {
   }, ' ', '.', '+', '-', '*', '/', '%', '*', '<', '>', '&', '|', '^', '=', '!', ';', ',', '[', '(', '{', '~'));
 }
 
+function doPromptSurvey() {
+  vscode.window.showInformationMessage('Do you mind filling in a quick survey about Code4Me?', ...["Survey", "Later", "Don't ask again"]).then(selection => {
+    if (selection === "Survey") {
+      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+    }
+    if (selection === "Don't ask again") {
+      promptSurvey = false;
+    }
+  });
+}
+
 function getTriggerCharacter(document: vscode.TextDocument, position: vscode.Position, length: number) {
   const endPos = new vscode.Position(position.line, position.character);
-  
+
   if (position.character - length < 0) return undefined;
 
   const startCharacterPos = new vscode.Position(position.line, position.character - length);
@@ -67,7 +83,7 @@ function determineTriggerCharacter(document: vscode.TextDocument, position: vsco
   const rangeLine = new vscode.Range(startPosLine, endPosLine);
 
   const lineSplit = document.getText(rangeLine).match(/[\w]+/g);
-  
+
   if (lineSplit == null) return null;
   const lastWord = lineSplit!.pop()!;
 
@@ -113,7 +129,6 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];
   const textRight = textArray[1];
-
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -154,6 +169,10 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
       console.error("VerifyToken field not found in response!");
       return undefined;
     }
+    if (!Object.prototype.hasOwnProperty.call(json, 'survey')) {
+      console.error("Survey field not found in response!");
+      return undefined;
+    }
     return json;
   } catch (e) {
     console.error("Unexpected error: ", e);
@@ -164,14 +183,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 export function deactivate() { }
 
-/**
- * Tracks the inserted completion and sends the possibly changed completion after a timeout.
- * @param position cursor position.
- * @param completion the completion provided by the server.
- * @param completionToken the token of the completion provided by the server.
- * @param apiKey the identifier of the user.
- */
-function verifyInsertion(position: vscode.Position, completion: string, completionToken: string, apiKey: string) {
+function verifyInsertion(position: vscode.Position, completion: string | null, completionToken: string, apiKey: string, timer: NodeJS.Timeout | null) {
+  if (timer !== null) clearTimeout(timer);
   const editor = vscode.window.activeTextEditor;
   const document = editor!.document;
   const documentName = document.fileName;
@@ -217,10 +230,10 @@ function verifyInsertion(position: vscode.Position, completion: string, completi
     }
   });
 
-  setTimeout(async () => {
+
+  return timer = setTimeout(async () => {
     listener.dispose();
     const lineText = editor?.document.lineAt(lineNumber).text;
-
     const response = await fetch("https://code4me.me/api/v1/prediction/verify", {
       method: 'POST',
       body: JSON.stringify(
@@ -240,5 +253,5 @@ function verifyInsertion(position: vscode.Position, completion: string, completi
       console.error("Response status not OK! Status: ", response.status);
       return undefined;
     }
-  }, 5000);
+  }, 30000);
 }
