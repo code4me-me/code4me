@@ -28,7 +28,7 @@ The plugin does not collect personal data nor the segment sent. The plugin does 
 
 Furthermore, Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the study. By using Code4Me you give permission for the data collection.
 
-## Code4Me is not working.
+## Code4Me is not working!
 Code4Me should automatically trigger on specific triggers points such as a period. Additionally, it can be manually triggered by the keybinds mentioned. If the manual trigger does not prompt a code suggestion it could be the case that the ML-based model did not find a completion. To make sure that this is not the case, please attempt to trigger the plugin with enough context (code).
 
 If Code4Me still does not prompt autocomplete suggestions, please make sure that the suggestions have not dropped in ranking by scrolling down the suggestion list.
