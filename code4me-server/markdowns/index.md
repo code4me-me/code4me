@@ -1,8 +1,8 @@
 # Code4Me
-Code4Me provides automatic intelligent code completion based on large pre-trained language models. Code4Me predicts statement (line) completion and is available for both PyCharm (also other JetBrains IDEs) and Visual Studio Code. The code suggestions from Code4Me can be recognised by the logo in the suggestion menu. Code4Me automatically triggers (on specific trigger characters) or the user can prompt it manually by pressing the keybind. The keybind differs per IDE:
+Code4Me provides automatic intelligent code completion based on large pre-trained language models. Code4Me predicts statement (line) completion and is available for both PyCharm (also other JetBrains IDEs) and Visual Studio Code. The code suggestions from Code4Me can be recognised by the logo in the suggestion menu. Code4Me **automatically** triggers *on specific trigger characters* or the user can prompt it manually by pressing the keybind. The keybind differs per IDE:
 
 - Jetbrains: **ALT + SHIFT + K**
-- VSC: **CTRL + SPACE**
+- VSC: **Your keybind for the `triggerSuggest` command**
 
 Code4Me does not hinder native auto completion or other extensions.
 
