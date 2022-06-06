@@ -3,6 +3,9 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Added
+- Survey
+- UniXCoder
 
 ## [1.0.7]
 ### Added
