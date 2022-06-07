@@ -27,14 +27,6 @@ def make_sentinel(i):
     return f"<|mask:{i}|>"
 
 
-def truncate_left_context(context, max_length):
-    return context[max(0, len(context) - max_length):]
-
-
-def truncate_right_context(context, max_length):
-    return context[:min(max_length, len(context))]
-
-
 class StatementStoppingCriteria(StoppingCriteria):
 
     def __init__(self, init_length: int, stop_tokens: List[int]):
@@ -52,12 +44,7 @@ class StatementStoppingCriteria(StoppingCriteria):
 
 
 def generate(left_context: str, right_context: str):
-    tokenized_truncated_left_context = truncate_left_context(tokenizer(left_context, return_tensors="pt"), 1000)
-    tokenized_truncated_right_context = truncate_right_context(tokenizer(right_context, return_tensors="pt"), 1000)
-
-    prompt = tokenizer.decode(tokenized_truncated_left_context) + make_sentinel(0) + \
-        tokenizer.decode(tokenized_truncated_right_context) + EOF + make_sentinel(1) + make_sentinel(0)
-
+    prompt = left_context + make_sentinel(0) + right_context + EOF + make_sentinel(1) + make_sentinel(0)
     tokens = tokenizer(prompt, return_tensors="pt")
     if CUDA:
         tokens = tokens.to("cuda")
