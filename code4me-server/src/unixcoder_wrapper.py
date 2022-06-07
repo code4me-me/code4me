@@ -16,7 +16,7 @@ stop_tokens = [
 
 
 def generate(left_context: str, right_context: str) -> List[str]:
-    tokens_ids = model.tokenize([left_context], mode="<decoder-only>")
+    tokens_ids = model.tokenize([left_context], max_length=936, mode="<decoder-only>")
     source_ids = torch.tensor(tokens_ids).to(device)
     prediction_ids = model.generate(source_ids, decoder_only=True, beam_size=1, max_length=128, stop_tokens=stop_tokens)
     predictions = model.decode(prediction_ids)

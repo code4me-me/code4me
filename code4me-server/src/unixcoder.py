@@ -60,6 +60,9 @@ class UniXcoder(nn.Module):
                 tokens_id = tokens_id + [self.config.pad_token_id] * (max_length-len(tokens_id))
             tokens_ids.append(tokens_id)
         return tokens_ids
+
+    def get_tokenizer(self):
+        return self.tokenizer
             
     def decode(self, source_ids):   
         """ Convert token ids to string """      

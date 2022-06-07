@@ -1,4 +1,5 @@
 import os
+import util
 from typing import List
 
 import torch
@@ -43,7 +44,24 @@ class StatementStoppingCriteria(StoppingCriteria):
         return self.__contains_stop_token(input_ids[0][self.init_length:])
 
 
+def decode(tokens):
+    return tokenizer.decode(
+        tokens,
+        clean_up_tokenization_spaces=False,
+        skip_special_tokens=True
+    )
+
+
 def generate(left_context: str, right_context: str):
+    left_context = decode(util.truncate_left_context(
+        tokenizer(left_context, return_tensors="pt").input_ids[0],
+        1000
+    ))
+    right_context = decode(util.truncate_right_context(
+        tokenizer(right_context, return_tensors="pt").input_ids[0],
+        1000
+    ))
+
     prompt = left_context + make_sentinel(0) + right_context + EOF + make_sentinel(1) + make_sentinel(0)
     tokens = tokenizer(prompt, return_tensors="pt")
     if CUDA:
@@ -59,11 +77,9 @@ def generate(left_context: str, right_context: str):
             do_sample=True,
             top_p=0.95,
             temperature=0.2,
-            max_length=token_count + 128,
+            max_length=min(2048, token_count + 48),
             stopping_criteria=stopping_criteria
         )[0][token_count:]
 
-    decoded_completion = tokenizer.decode(completion).strip().split("\n")[0]
-    while decoded_completion.endswith(EOM):
-        decoded_completion = decoded_completion[:-len(EOM)]
+    decoded_completion = decode(completion).strip().split("\n")[0]
     return [decoded_completion]
