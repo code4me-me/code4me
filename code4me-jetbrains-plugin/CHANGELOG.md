@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+
+## [1.0.9]
 ### Changed
 - Increased max context length
 
