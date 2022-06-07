@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class PredictionAutocompleteRequest {
 
-    private static final int MAX_CHARACTERS = 2048;
+    private static final int MAX_CHARACTERS = 3992;
 
     private final String leftContext;
     private final String rightContext;
