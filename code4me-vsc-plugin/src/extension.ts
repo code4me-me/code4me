@@ -3,6 +3,7 @@ import { ExtensionContext } from 'vscode';
 import rand from 'csprng';
 import fetch from 'node-fetch';
 
+const averageTokenLengthInCharacters = 3992;
 let promptSurvey = true;
 
 export function activate(extensionContext: ExtensionContext) {
@@ -124,7 +125,7 @@ function splitTextAtCursor(nCharacters: number, position: vscode.Position): stri
 }
 
 async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string): Promise<any | undefined> {
-  const textArray = splitTextAtCursor(2048, position);
+  const textArray = splitTextAtCursor(averageTokenLengthInCharacters, position);
   const triggerPoint = determineTriggerCharacter(document, position);
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];

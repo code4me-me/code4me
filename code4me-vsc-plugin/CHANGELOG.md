@@ -1,5 +1,9 @@
 # Change Log
 
+## [v1.0.2] - 2022-06-07
+### Changed
+- 2048 character transmitted to 3992 characters (average token length represented in characters).
+
 ## [v1.0.1] - 2022-06-06
 ### Added
 - Survey prompt
