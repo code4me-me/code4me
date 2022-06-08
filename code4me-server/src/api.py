@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import uuid
@@ -50,10 +51,13 @@ def autocomplete():
             "inferenceTime": (t_after - t_before).total_seconds() * 1000
         }))
 
+    n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
+    survey = n_suggestions >= 100 and n_suggestions % 50 == 0
+
     return response({
         "predictions": predictions,
         "verifyToken": verify_token,
-        "survey": False  # TODO: survey
+        "survey": survey
     })
 
 
