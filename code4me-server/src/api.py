@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime
 
-from flask import Blueprint, request, Response
+from flask import Blueprint, request, Response, redirect
 
 from limiter import limiter
 from model import Model
@@ -108,6 +108,12 @@ def verify():
     return response({
         "success": True
     })
+
+
+@v1.route("/survey")
+def survey():
+    user_id = request.args.get("user_id", default="", type=str)
+    return redirect(os.getenv("SURVEY_LINK").replace("{user_id}", user_id), code=302)
 
 
 def get_model():
