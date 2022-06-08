@@ -34,8 +34,11 @@ def autocomplete():
     if res is not None:
         return res
 
+    left_context = values["leftContext"]
+    right_context = values["rightContext"]
+
     t_before = datetime.now()
-    predictions = model.value[1](values["leftContext"], values["rightContext"])
+    predictions = model.value[1](left_context, right_context)
     t_after = datetime.now()
 
     verify_token = uuid.uuid4().hex
@@ -48,7 +51,9 @@ def autocomplete():
             "ide": values["ide"].lower(),
             "model": model.name,
             "predictions": predictions,
-            "inferenceTime": (t_after - t_before).total_seconds() * 1000
+            "inferenceTime": (t_after - t_before).total_seconds() * 1000,
+            "leftContextLength": len(left_context),
+            "rightContextLength": len(right_context)
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
