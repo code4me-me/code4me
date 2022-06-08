@@ -53,7 +53,7 @@ def autocomplete():
 
     survey = False
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
-    if n_suggestions > 100 and n_suggestions % 20 == 0:
+    if n_suggestions >= 100 and n_suggestions % 20 == 0:
         survey = True
 
     return response({
