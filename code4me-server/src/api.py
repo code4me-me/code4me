@@ -51,10 +51,8 @@ def autocomplete():
             "inferenceTime": (t_after - t_before).total_seconds() * 1000
         }))
 
-    survey = False
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
-    if n_suggestions >= 100 and n_suggestions % 20 == 0:
-        survey = True
+    survey = n_suggestions >= 100 and n_suggestions % 50 == 0
 
     return response({
         "predictions": predictions,
