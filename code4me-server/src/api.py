@@ -15,7 +15,7 @@ os.makedirs("data", exist_ok=True)
 
 
 @v1.route("/prediction/autocomplete", methods=["POST"])
-@limiter.limit("600/hour")
+@limiter.limit("1000/hour")
 def autocomplete():
     user_token, model, res = get_model()
     if res is not None:
@@ -67,7 +67,7 @@ def autocomplete():
 
 
 @v1.route("/prediction/verify", methods=["POST"])
-@limiter.limit("600/hour")
+@limiter.limit("1000/hour")
 def verify():
     user_token, model, res = get_model()
     if res is not None:
