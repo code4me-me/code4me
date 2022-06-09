@@ -31,7 +31,7 @@ export function activate(extensionContext: ExtensionContext) {
       const listPredictionItems = jsonResponse.predictions;
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
-      if (jsonResponse.survey && promptSurvey) doPromptSurvey();
+      if (jsonResponse.survey && promptSurvey) doPromptSurvey(code4MeUuid);
 
       const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
       return listPredictionItems.map((prediction: string) => {
@@ -50,7 +50,7 @@ export function activate(extensionContext: ExtensionContext) {
   }, ' ', '.', '+', '-', '*', '/', '%', '*', '<', '>', '&', '|', '^', '=', '!', ';', ',', '[', '(', '{', '~'));
 }
 
-function doPromptSurvey() {
+function doPromptSurvey(code4MeUuid: string) {
   vscode.window.showInformationMessage(
     SURVEY_WINDOW_REQUEST_TEXT,
     SURVEY_WINDOW_SURVEY,
@@ -58,7 +58,8 @@ function doPromptSurvey() {
     INFORMATION_WINDOW_DONT_SHOW_AGAIN
   ).then(selection => {
     if (selection === SURVEY_WINDOW_SURVEY) {
-      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+      const url = `https://code4me.me/api/v1/survey?user_id=${code4MeUuid}`;
+      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
     }
     if (selection === INFORMATION_WINDOW_DONT_SHOW_AGAIN) {
       promptSurvey = false;
@@ -66,10 +67,10 @@ function doPromptSurvey() {
   });
 }
 
-function showMaxRequestWindow(text: string) {
+function showMaxRequestWindow(displayedText: string) {
   if (!promptMaxRequestWindow) return;
   vscode.window.showInformationMessage(
-    text,
+    displayedText,
     INFORMATION_WINDOW_CLOSE,
     MAX_REQUEST_WINDOW_CLOSE_1_HOUR,
     INFORMATION_WINDOW_DONT_SHOW_AGAIN

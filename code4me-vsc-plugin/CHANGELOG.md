@@ -1,4 +1,7 @@
 # Change Log
+## [v1.0.4] - 2022-06-09
+### Added
+- Proper survey link.
 
 ## [v1.0.3] - 2022-06-09
 ### Added
