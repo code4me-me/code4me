@@ -5,6 +5,7 @@ import fetch from 'node-fetch';
 
 const averageTokenLengthInCharacters = 3992;
 let promptSurvey = true;
+let promptMaxRequestWindow = true;
 
 export function activate(extensionContext: ExtensionContext) {
   if (!extensionContext.globalState.get('code4me-uuid')) {
@@ -52,6 +53,25 @@ function doPromptSurvey() {
       promptSurvey = false;
     }
   });
+}
+
+function showMaxRequestWindow(text: string) {
+  if (!promptMaxRequestWindow) return;
+  vscode.window.showInformationMessage(text, ...["Close", "Close for 1 hour", "Don't show again"]).then(selection => {
+    if (selection === "Close for 1 hour") {
+      promptMaxRequestWindow = false;
+      setTimeout(() => {
+        promptMaxRequestWindow = true;
+      }, 3600 * 1000);
+    }
+    if (selection === "Don't show again") {
+      promptMaxRequestWindow = false;
+    }
+  });
+}
+
+function showErrorWindow(text: string) {
+  vscode.window.showInformationMessage(text);
 }
 
 function getTriggerCharacter(document: vscode.TextDocument, position: vscode.Position, length: number) {
@@ -154,6 +174,12 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
       return undefined;
     }
 
+    if (response.ok) {
+    // if (response.status == 429) {
+      showMaxRequestWindow("You have exceeded the limit of 1000 suggestions per hour.");
+      return undefined;
+    }
+
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       console.error("Wrong content type!");
@@ -177,6 +203,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
     return json;
   } catch (e) {
     console.error("Unexpected error: ", e);
+    showErrorWindow("Unexpected error: " + e);
     return undefined;
   }
 }
