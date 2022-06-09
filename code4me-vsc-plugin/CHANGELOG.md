@@ -1,5 +1,10 @@
 # Change Log
 
+## [v1.0.3] - 2022-06-09
+### Added
+- Prompts a window when request limit has been reached.
+- Prompts a window if an unknown error occurs.
+
 ## [v1.0.2] - 2022-06-07
 ### Changed
 - 2048 character transmitted to 3992 characters (average token length represented in characters).
