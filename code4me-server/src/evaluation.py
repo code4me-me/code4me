@@ -22,7 +22,11 @@ def compute_rouge(line: str, completion: str):
 def tokenize_code(code):
     tokens = [
         x
-        for x in re.split('("""(.|\n)*"""|"(.|\n)*"|#.*|!=|\*\*|<<|>>|==|>=|<=| +|\W)', code)
+        for x in re.split(
+            '(\'\'\'(?:.|\n)*\'\'\'|"""(?:.|\n)*"""|"(?:.|\n)*"|\'(?:.|\n)*\'|#.*|!=|\*\*|<<|>>|==|>=|<=| +|\W)',
+            code
+        )
+
         if x and not x.isspace()
     ]
     return tokens, " ".join(tokens)
