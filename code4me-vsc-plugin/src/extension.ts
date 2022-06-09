@@ -68,7 +68,8 @@ function doPromptSurvey() {
 
 function showMaxRequestWindow(text: string) {
   if (!promptMaxRequestWindow) return;
-  vscode.window.showInformationMessage(text,
+  vscode.window.showInformationMessage(
+    text,
     INFORMATION_WINDOW_CLOSE,
     MAX_REQUEST_WINDOW_CLOSE_1_HOUR,
     INFORMATION_WINDOW_DONT_SHOW_AGAIN
