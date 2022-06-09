@@ -3,7 +3,14 @@ import { ExtensionContext } from 'vscode';
 import rand from 'csprng';
 import fetch from 'node-fetch';
 
-const averageTokenLengthInCharacters = 3992;
+const INFORMATION_WINDOW_CLOSE = "Close";
+const MAX_REQUEST_WINDOW_CLOSE_1_HOUR = "Close for 1 hour";
+const INFORMATION_WINDOW_DONT_SHOW_AGAIN = "Don't show again";
+const SURVEY_WINDOW_REQUEST_TEXT = "Do you mind filling in a quick survey about Code4Me?";
+const SURVEY_WINDOW_SURVEY = "Survey";
+
+const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 3992;
+
 let promptSurvey = true;
 let promptMaxRequestWindow = true;
 
@@ -45,11 +52,11 @@ export function activate(extensionContext: ExtensionContext) {
 }
 
 function doPromptSurvey() {
-  vscode.window.showInformationMessage('Do you mind filling in a quick survey about Code4Me?', ...["Survey", "Later", "Don't ask again"]).then(selection => {
-    if (selection === "Survey") {
+  vscode.window.showInformationMessage(SURVEY_WINDOW_REQUEST_TEXT, ...[SURVEY_WINDOW_SURVEY, INFORMATION_WINDOW_CLOSE, INFORMATION_WINDOW_DONT_SHOW_AGAIN]).then(selection => {
+    if (selection === SURVEY_WINDOW_SURVEY) {
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
     }
-    if (selection === "Don't ask again") {
+    if (selection === INFORMATION_WINDOW_DONT_SHOW_AGAIN) {
       promptSurvey = false;
     }
   });
@@ -57,14 +64,14 @@ function doPromptSurvey() {
 
 function showMaxRequestWindow(text: string) {
   if (!promptMaxRequestWindow) return;
-  vscode.window.showInformationMessage(text, ...["Close", "Close for 1 hour", "Don't show again"]).then(selection => {
-    if (selection === "Close for 1 hour") {
+  vscode.window.showInformationMessage(text, ...[INFORMATION_WINDOW_CLOSE, MAX_REQUEST_WINDOW_CLOSE_1_HOUR, INFORMATION_WINDOW_DONT_SHOW_AGAIN]).then(selection => {
+    if (selection === MAX_REQUEST_WINDOW_CLOSE_1_HOUR) {
       promptMaxRequestWindow = false;
       setTimeout(() => {
         promptMaxRequestWindow = true;
       }, 3600 * 1000);
     }
-    if (selection === "Don't show again") {
+    if (selection === INFORMATION_WINDOW_DONT_SHOW_AGAIN) {
       promptMaxRequestWindow = false;
     }
   });
@@ -145,7 +152,7 @@ function splitTextAtCursor(nCharacters: number, position: vscode.Position): stri
 }
 
 async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string): Promise<any | undefined> {
-  const textArray = splitTextAtCursor(averageTokenLengthInCharacters, position);
+  const textArray = splitTextAtCursor(AVERAGE_TOKEN_LENGHT_IN_CHARACTERS, position);
   const triggerPoint = determineTriggerCharacter(document, position);
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];
@@ -170,13 +177,10 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
     });
 
     if (!response.ok) {
+      if (response.status == 429) {
+        showMaxRequestWindow("You have exceeded the limit of 1000 suggestions per hour.");
+      }
       console.error("Response status not OK! Status: ", response.status);
-      return undefined;
-    }
-
-    if (response.ok) {
-    // if (response.status == 429) {
-      showMaxRequestWindow("You have exceeded the limit of 1000 suggestions per hour.");
       return undefined;
     }
 
