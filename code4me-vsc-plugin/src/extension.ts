@@ -31,7 +31,6 @@ export function activate(extensionContext: ExtensionContext) {
       const listPredictionItems = jsonResponse.predictions;
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
-
       if (jsonResponse.survey && promptSurvey) doPromptSurvey();
 
       const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
@@ -52,7 +51,12 @@ export function activate(extensionContext: ExtensionContext) {
 }
 
 function doPromptSurvey() {
-  vscode.window.showInformationMessage(SURVEY_WINDOW_REQUEST_TEXT, ...[SURVEY_WINDOW_SURVEY, INFORMATION_WINDOW_CLOSE, INFORMATION_WINDOW_DONT_SHOW_AGAIN]).then(selection => {
+  vscode.window.showInformationMessage(
+    SURVEY_WINDOW_REQUEST_TEXT,
+    SURVEY_WINDOW_SURVEY,
+    INFORMATION_WINDOW_CLOSE,
+    INFORMATION_WINDOW_DONT_SHOW_AGAIN
+  ).then(selection => {
     if (selection === SURVEY_WINDOW_SURVEY) {
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
     }
@@ -64,7 +68,11 @@ function doPromptSurvey() {
 
 function showMaxRequestWindow(text: string) {
   if (!promptMaxRequestWindow) return;
-  vscode.window.showInformationMessage(text, ...[INFORMATION_WINDOW_CLOSE, MAX_REQUEST_WINDOW_CLOSE_1_HOUR, INFORMATION_WINDOW_DONT_SHOW_AGAIN]).then(selection => {
+  vscode.window.showInformationMessage(text,
+    INFORMATION_WINDOW_CLOSE,
+    MAX_REQUEST_WINDOW_CLOSE_1_HOUR,
+    INFORMATION_WINDOW_DONT_SHOW_AGAIN
+  ).then(selection => {
     if (selection === MAX_REQUEST_WINDOW_CLOSE_1_HOUR) {
       promptMaxRequestWindow = false;
       setTimeout(() => {
