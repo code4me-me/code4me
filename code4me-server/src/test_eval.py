@@ -30,6 +30,14 @@ def is_not_valid_data(d):
     return 'groundTruth' not in d or ('groundTruth' in d and d['groundTruth'].strip() == '') or d['predictions'] == ['']
 
 
+def get_prediction(d):
+    if d['chosenPrediction'] is not None:
+        p = d['chosenPrediction']
+    else:
+        p = d['predictions'][0]
+    return p.strip()
+
+
 if __name__ == '__main__':
     data_folder = '../data3'
     directory = os.fsencode(data_folder)
@@ -53,24 +61,16 @@ if __name__ == '__main__':
                 if is_not_valid_data(data):
                     continue
 
-                # calculate score if completion is chosen
-                if 'groundTruth' in data and data['chosenPrediction'] is not None:
-                    score = evaluation.compute(data['groundTruth'], data['chosenPrediction'])
-                    if data['model'] == 'InCoder' or data['model'] == 'CodeFill':
-                        incoder.append(score)
-                    else:
-                        unixcoder.append(score)
+                # calculate score
+                groundTruth = data['groundTruth'].strip()
+                prediction = get_prediction(data)
+                score = evaluation.compute(groundTruth, prediction)
 
-                # calculate score if completion is not chosen
-                elif 'groundTruth' in data and data['chosenPrediction'] is None:
-                    score = evaluation.compute(data['groundTruth'], data['predictions'][0])
-                    if data['model'] == 'InCoder' or data['model'] == 'CodeFill':
-                        incoder.append(score)
-                    else:
-                        unixcoder.append(score)
+                # add score to correct model set
+                if data['model'] == 'InCoder' or data['model'] == 'CodeFill':
+                    incoder.append(score)
                 else:
-                    print("did not correctly check for invalid data")
-                    continue
+                    unixcoder.append(score)
 
     print("incoder:")
     print_scores(incoder)
