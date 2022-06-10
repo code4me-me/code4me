@@ -17,7 +17,7 @@ The plugin does **not** collect personal data. The plugin does collect the follo
   - The plugin tracks the line the code was inserted and sends that line to the server after a timeout.
 * Time of completion.
 
-Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the bachelor thesis. By using Code4Me you give permission for data collection. 
+Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the study. By using Code4Me you give permission for data collection. 
 
 # Transmitted Code
-To allow for code suggestions code (2048 characters left and right of trigger position) is send to servers at the TU Delft and processed. In return a code completion is send back. The sent code is not saved on the database.
+To allow for code suggestions code (3992 characters left and right of trigger position) is send to servers at the TU Delft and processed. In return a code completion is send back. The sent code is not saved on the database.

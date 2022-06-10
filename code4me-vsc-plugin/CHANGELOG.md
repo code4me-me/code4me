@@ -1,4 +1,9 @@
 # Change Log
+## [v1.0.5] - 2022-06-10
+### Changed
+- Edited readme.
+- Changed data destruction from at the end of the thesis to at the end of the study.
+
 ## [v1.0.4] - 2022-06-09
 ### Added
 - Proper survey link.
