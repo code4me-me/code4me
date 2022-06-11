@@ -1,4 +1,8 @@
 # Change Log
+## [v1.0.6] - 2022-06-11
+### Changed
+- Code4Me now works on all languages.
+
 ## [v1.0.5] - 2022-06-10
 ### Changed
 - Edited readme.

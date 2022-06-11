@@ -23,7 +23,7 @@ export function activate(extensionContext: ExtensionContext) {
 
   extensionContext.subscriptions.push(vscode.commands.registerCommand('verifyInsertion', verifyInsertion));
 
-  extensionContext.subscriptions.push(vscode.languages.registerCompletionItemProvider('python', {
+  extensionContext.subscriptions.push(vscode.languages.registerCompletionItemProvider({ pattern: '**' }, {
     async provideCompletionItems(document, position, token, context) {
       const jsonResponse = await callToAPIAndRetrieve(document, position, code4MeUuid);
       if (!jsonResponse) return undefined;
@@ -176,7 +176,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "leftContext": textLeft,
           "rightContext": textRight,
           "triggerPoint": triggerPoint,
-          "language": "python",
+          "language": document.languageId,
           "ide": "vsc"
         }
       ),

@@ -4,7 +4,7 @@
 	"description": "Language model code completion.",
 	"author": "Code4Me",
 	"license": "Apache-2.0",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"categories": [
 		"Machine Learning",
 		"Programming Languages",
@@ -26,8 +26,7 @@
 		"vscode": "^1.47.0"
 	},
 	"activationEvents": [
-		"editor.action.triggerSuggest",
-		"onLanguage:python"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"scripts": {
