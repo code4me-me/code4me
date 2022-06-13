@@ -1,6 +1,7 @@
 import json
 import os
 import evaluation
+from evaluation import tokenize_code
 
 
 def print_scores(scores):
@@ -38,11 +39,88 @@ def get_prediction(d):
     return p.strip()
 
 
+def classify_scores(model_data, model_scores):
+    for d in model_data:
+
+        # calculate score
+        truth = d['groundTruth'].strip()
+        pred = get_prediction(d)
+        s = evaluation.compute(truth, pred)
+
+        # add score to correct model set
+        model_scores.append(s)
+
+        # add score to corresponding trigger point
+        if d['triggerPoint'] not in trigger_points:
+            trigger_points[d['triggerPoint']] = [s]
+        else:
+            trigger_points[d['triggerPoint']].append(s)
+
+        # add score to group based on chosen or not
+        if d['chosenPrediction'] is not None:
+            chosen.append(s)
+        else:
+            not_chosen.append(s)
+
+        # add inf time to array
+        inf_time.append(d['inferenceTime'])
+
+        # add token length to dictionary
+        tokenized_pred = tokenize_code(pred)[0]
+        if str(len(tokenized_pred)) not in token_length:
+            token_length[str(len(tokenized_pred))] = [s]
+        else:
+            token_length[str(len(tokenized_pred))].append(s)
+
+    print("inf time = ", sum(inf_time) / len(inf_time))
+    print_scores(model_scores)
+
+    print("chosen:")
+    print_scores(chosen)
+
+    print("not chosen:")
+    print_scores(not_chosen)
+
+    print("token lengths:")
+    print("length 1, 2, and 3")
+    print_scores(sum([token_length['1'], token_length['2'], token_length['3']], []))
+    print("length 4, 5, and 6")
+    print_scores(sum([token_length['4'], token_length['5'], token_length['6']], []))
+    print("length 7 and bigger")
+    token_lengths_filtered = []
+    for i in range(7, 129):
+        if str(i) in token_length:
+            token_lengths_filtered.append(token_length[str(i)])
+    print_scores(sum(token_lengths_filtered, []))
+    print()
+
+    print("trigger points:")
+    print("manual triggers")
+    print_scores(trigger_points[None])
+    del trigger_points[None]
+    sorted_trigger_points = sorted(trigger_points.items(), key=lambda x: len(x[1]), reverse=True)
+    i = 0
+    for tp, tp_scores in sorted_trigger_points:
+        if i < 5:
+            i += 1
+            print(tp)
+            print_scores(tp_scores)
+        else:
+            break
+
+
 if __name__ == '__main__':
-    data_folder = '../data3'
+    data_folder = '../data'
     directory = os.fsencode(data_folder)
     incoder = []
+    incoder_scores = []
     unixcoder = []
+    unixcoder_scores = []
+    chosen = []
+    not_chosen = []
+    trigger_points = {}
+    inf_time = []
+    token_length = {}
 
     for file in os.listdir(directory):
         filename = data_folder + '/' + os.fsdecode(file)
@@ -61,19 +139,21 @@ if __name__ == '__main__':
                 if is_not_valid_data(data):
                     continue
 
-                # calculate score
-                groundTruth = data['groundTruth'].strip()
-                prediction = get_prediction(data)
-                score = evaluation.compute(groundTruth, prediction)
-
-                # add score to correct model set
+                # add data to correct model
                 if data['model'] == 'InCoder' or data['model'] == 'CodeFill':
-                    incoder.append(score)
+                    incoder.append(data)
                 else:
-                    unixcoder.append(score)
+                    unixcoder.append(data)
 
     print("incoder:")
-    print_scores(incoder)
+    classify_scores(incoder, incoder_scores)
+
+    # empty arrays and dicts for next model scores
+    chosen = []
+    not_chosen = []
+    trigger_points = {}
+    inf_time = []
+    token_length = {}
 
     print("unixcoder:")
-    print_scores(unixcoder)
+    classify_scores(unixcoder, unixcoder_scores)
