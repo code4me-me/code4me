@@ -81,32 +81,24 @@ def classify_scores(model_data, model_scores):
     print("not chosen:")
     print_scores(not_chosen)
 
-    print("token lengths:")
-    print("length 1, 2, and 3")
-    print_scores(sum([token_length['1'], token_length['2'], token_length['3']], []))
-    print("length 4, 5, and 6")
-    print_scores(sum([token_length['4'], token_length['5'], token_length['6']], []))
-    print("length 7 and bigger")
-    token_lengths_filtered = []
-    for i in range(7, 129):
+    for i in range(1, 11):
         if str(i) in token_length:
-            token_lengths_filtered.append(token_length[str(i)])
-    print_scores(sum(token_lengths_filtered, []))
-    print()
+            print('token length of prediction = ', i)
+            print_scores(token_length[str(i)])
+            del token_length[str(i)]
+    print('token length of prediction > 10')
+    print_scores(sum(token_length.values(), []))
 
     print("trigger points:")
     print("manual triggers")
     print_scores(trigger_points[None])
     del trigger_points[None]
     sorted_trigger_points = sorted(trigger_points.items(), key=lambda x: len(x[1]), reverse=True)
-    i = 0
-    for tp, tp_scores in sorted_trigger_points:
-        if i < 5:
-            i += 1
-            print(tp)
-            print_scores(tp_scores)
-        else:
+    for index, (tp, tp_scores) in enumerate(sorted_trigger_points):
+        if index >= 10:
             break
+        print(tp)
+        print_scores(tp_scores)
 
 
 if __name__ == '__main__':
