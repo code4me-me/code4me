@@ -3,6 +3,10 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Changed
+- Send plugin version to server
+- Add support for unknown trigger points
+- Added except keyword
 
 ## [1.0.9]
 ### Changed
