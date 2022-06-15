@@ -13,7 +13,7 @@ public class PredictionAutocompleteRequest {
     private final String triggerPoint;
     private final String language;
     private final String ide;
-    private final boolean unknownTriggerPoint;
+    private final boolean keybind;
 
 
     private PredictionAutocompleteRequest(
@@ -22,14 +22,14 @@ public class PredictionAutocompleteRequest {
             String triggerPoint,
             String language,
             String ide,
-            boolean unknownTriggerPoint
+            boolean keybind
     ) {
         this.leftContext = leftContext;
         this.rightContext = rightContext;
         this.triggerPoint = triggerPoint;
         this.language = language;
         this.ide = ide;
-        this.unknownTriggerPoint = unknownTriggerPoint;
+        this.keybind = keybind;
     }
 
     public static PredictionAutocompleteRequest of(
@@ -45,9 +45,9 @@ public class PredictionAutocompleteRequest {
         String rightContext = text.substring(offset);
         String fixedLeftContext = leftContext.substring(Math.max(0, leftContext.length() - MAX_CHARACTERS));
         String fixedRightContext = rightContext.substring(0, Math.min(MAX_CHARACTERS, rightContext.length()));
-        boolean unknownTriggerPoint = triggerPoint == null;
+        boolean keybind = triggerPoint == null;
 
-        if (unknownTriggerPoint) {
+        if (keybind) {
             if (fixedLeftContext.contains("\n")) {
                 String line = fixedLeftContext.substring(fixedLeftContext.lastIndexOf('\n') + 1).trim();
                 if (line.contains(" ")) {
@@ -72,7 +72,7 @@ public class PredictionAutocompleteRequest {
                 triggerPoint,
                 language,
                 ide,
-                unknownTriggerPoint
+                keybind
         );
     }
 
@@ -96,7 +96,7 @@ public class PredictionAutocompleteRequest {
         return ide;
     }
 
-    public boolean getUnknownTriggerPoint() {
-        return unknownTriggerPoint;
+    public boolean getKeybind() {
+        return keybind;
     }
 }
