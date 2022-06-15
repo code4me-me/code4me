@@ -127,7 +127,7 @@ function determineTriggerCharacter(document: vscode.TextDocument, position: vsco
   // Invoke always triggers on 24/7 completion (any character typed at start of word) and
   // whenever there is a manual call to triggerSuggest. By cancelling out the 24/7 completion
   // for Code4Me, we can detect a manual trigger.
-  if (triggerKind === 0) {
+  if (triggerKind === vscode.CompletionTriggerKind.Invoke) {
     // Manual completion on empty line.
     if (lastWord.length === 0) return null;
     // Likely start of word and triggered on 24/7 completion, do not autocomplete.
@@ -189,7 +189,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "triggerPoint": triggerPoint,
           "language": document.languageId,
           "ide": "vsc",
-          "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke ? true : false,
+          "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke,
           "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
         }
       ),
