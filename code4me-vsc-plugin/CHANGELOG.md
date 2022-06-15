@@ -1,4 +1,10 @@
 # Change Log
+## [v1.0.7] - 2022-06-15
+### Added
+- Identifying of manual or automatic trigger.
+- Sends version of extension to API.
+- Add two keywords: `with` and `except`.
+
 ## [v1.0.6] - 2022-06-11
 ### Changed
 - Code4Me now works on all languages.
