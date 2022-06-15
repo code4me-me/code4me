@@ -29,6 +29,7 @@ def autocomplete():
             ("triggerPoint", str, True),
             ("language", str, False),
             ("ide", str, False),
+            ("unknownTriggerPoint", bool, True)
         ],
     )
     if res is not None:
@@ -53,7 +54,8 @@ def autocomplete():
             "predictions": predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000,
             "leftContextLength": len(left_context),
-            "rightContextLength": len(right_context)
+            "rightContextLength": len(right_context),
+            "unknownTriggerPoint": values["unknownTriggerPoint"]
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))

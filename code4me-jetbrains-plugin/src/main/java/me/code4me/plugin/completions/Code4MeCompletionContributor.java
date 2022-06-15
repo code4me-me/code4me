@@ -61,7 +61,8 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                 offset,
                 triggerPoint,
                 Code4MeUtil.getLanguage(project, doc),
-                "jetbrains"
+                "jetbrains",
+                project
         );
 
         project.getService(Code4MeApiService.class).fetchAutoCompletion(project, request).thenAccept(res -> {
