@@ -11,6 +11,8 @@ const SURVEY_WINDOW_SURVEY = "Survey";
 
 const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 3992;
 
+const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
+
 const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
 
@@ -175,7 +177,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];
   const textRight = textArray[1];
-  
+
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -188,7 +190,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "language": document.languageId,
           "ide": "vsc",
           "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke ? true : false,
-          "pluginVersion": vscode.extensions.getExtension('Code4Me.code4me-plugin')?.packageJSON['version']
+          "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
         }
       ),
       headers: {
