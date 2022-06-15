@@ -32,9 +32,11 @@ Content-Type: application/json
 {
   "leftContext": string,
   "rightContext": string,
-  "triggerPoint": string | null,
+  "triggerPoint": string,
   "language": string,
-  "ide": string
+  "ide": string,
+  "keybind": boolean,
+  "pluginVersion": string
 }
 ```
 - `leftContext`: the context left of the prediction
@@ -42,6 +44,8 @@ Content-Type: application/json
 - `triggerPoint`: the trigger keyword in case a trigger point was used, null otherwise
 - `language`: language of the source file
 - `ide`: the ide the request was fired from
+- `keybind`: a boolean indicating whether the keybind was used to autocomplete
+- `pluginVersion`: the version of the plugin that made the request
 
 #### Response body
 ```

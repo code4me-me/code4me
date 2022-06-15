@@ -1,6 +1,9 @@
 package me.code4me.plugin.api;
 
+import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
+import me.code4me.plugin.Code4MeBundle;
 import me.code4me.plugin.services.Code4MeTriggerPointsService;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,6 +17,7 @@ public class PredictionAutocompleteRequest {
     private final String language;
     private final String ide;
     private final boolean keybind;
+    private final String pluginVersion;
 
 
     private PredictionAutocompleteRequest(
@@ -30,6 +34,7 @@ public class PredictionAutocompleteRequest {
         this.language = language;
         this.ide = ide;
         this.keybind = keybind;
+        this.pluginVersion = PluginManagerCore.getPlugin(PluginId.getId("me.code4me.plugin")).getVersion();
     }
 
     public static PredictionAutocompleteRequest of(
@@ -98,5 +103,9 @@ public class PredictionAutocompleteRequest {
 
     public boolean getKeybind() {
         return keybind;
+    }
+
+    public String getPluginVersion() {
+        return pluginVersion;
     }
 }
