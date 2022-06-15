@@ -11,6 +11,9 @@ const SURVEY_WINDOW_SURVEY = "Survey";
 
 const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 3992;
 
+const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
+const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with'];
+
 let promptSurvey = true;
 let promptMaxRequestWindow = true;
 
@@ -22,13 +25,13 @@ export function activate(extensionContext: ExtensionContext) {
   const code4MeUuid: string = extensionContext.globalState.get('code4me-uuid')!;
 
   extensionContext.subscriptions.push(vscode.commands.registerCommand('verifyInsertion', verifyInsertion));
-
   extensionContext.subscriptions.push(vscode.languages.registerCompletionItemProvider({ pattern: '**' }, {
     async provideCompletionItems(document, position, token, context) {
-      const jsonResponse = await callToAPIAndRetrieve(document, position, code4MeUuid);
+      const jsonResponse = await callToAPIAndRetrieve(document, position, code4MeUuid, context.triggerKind);
       if (!jsonResponse) return undefined;
 
       const listPredictionItems = jsonResponse.predictions;
+
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
       if (jsonResponse.survey && promptSurvey) doPromptSurvey(code4MeUuid);
@@ -93,13 +96,11 @@ function showErrorWindow(text: string) {
 
 function getTriggerCharacter(document: vscode.TextDocument, position: vscode.Position, length: number) {
   const endPos = new vscode.Position(position.line, position.character);
-
   if (position.character - length < 0) return undefined;
-
   const startCharacterPos = new vscode.Position(position.line, position.character - length);
   const rangeCharacter = new vscode.Range(startCharacterPos, endPos);
-  const character = document.getText(rangeCharacter).trim();
-  return character;
+  const character = document.getText(rangeCharacter);
+  return character.trim();
 }
 
 /**
@@ -108,31 +109,38 @@ function getTriggerCharacter(document: vscode.TextDocument, position: vscode.Pos
  * @param position the current position of the cursor.
  * @returns triggerCharacter string or null (manual trigger suggest) or undefined if no trigger character was found.
  */
-function determineTriggerCharacter(document: vscode.TextDocument, position: vscode.Position) {
+function determineTriggerCharacter(document: vscode.TextDocument, position: vscode.Position, triggerKind: vscode.CompletionTriggerKind): string | null | undefined {
   const singleTriggerCharacter = getTriggerCharacter(document, position, 1);
   const doubleTriggerCharacter = getTriggerCharacter(document, position, 2);
   const tripleTriggerCharacter = getTriggerCharacter(document, position, 3);
-  const line = document.lineAt(position.line).text;
-
-  if (position.character !== line.length) return undefined;
 
   const startPosLine = new vscode.Position(position.line, 0);
   const endPosLine = new vscode.Position(position.line, position.character);
   const rangeLine = new vscode.Range(startPosLine, endPosLine);
 
-  const lineSplit = document.getText(rangeLine).match(/[\w]+/g);
+  const lineSplit = document.getText(rangeLine).trim().split(/[ ]+/g);
+  const lastWord = lineSplit != null ? lineSplit.pop()!.trim() : "";
 
-  if (lineSplit == null) return null;
-  const lastWord = lineSplit!.pop()!;
-
-  const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
-  const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is'];
-
-  if (allowedTriggerWords.includes(lastWord)) return lastWord;
-  if (tripleTriggerCharacter && allowedTriggerCharacters.includes(tripleTriggerCharacter)) return tripleTriggerCharacter;
-  if (doubleTriggerCharacter && allowedTriggerCharacters.includes(doubleTriggerCharacter)) return doubleTriggerCharacter;
-  if (singleTriggerCharacter && allowedTriggerCharacters.includes(singleTriggerCharacter)) return singleTriggerCharacter;
-  return undefined;
+  // There are 3 kinds of triggers: Invoke = 0, triggerCharacter = 1, IncompleteItems = 2.
+  // Invoke always triggers on 24/7 completion (any character typed at start of word) and
+  // whenever there is a manual call to triggerSuggest. By cancelling out the 24/7 completion
+  // for Code4Me, we can detect a manual trigger.
+  if (triggerKind === 0) {
+    // Manual completion on empty line.
+    if (lastWord.length === 0) return null;
+    // Likely start of word and triggered on 24/7 completion, do not autocomplete.
+    else if (lastWord.length === 1 && lastWord.match(/[A-z]+/g)) return undefined;
+    // Likely start of word and triggered on trigger characters, return trigger character as if trigger completion.
+    else if (lastWord.slice(lastWord.length - 1).match(/[^A-z]+/g)) return determineTriggerCharacter(document, position, vscode.CompletionTriggerKind.TriggerCharacter);
+    // Return found trigger word.
+    else return lastWord;
+  } else { // TriggerKind = 1, trigger completion
+    if (allowedTriggerWords.includes(lastWord)) return lastWord;
+    else if (tripleTriggerCharacter && allowedTriggerCharacters.includes(tripleTriggerCharacter)) return tripleTriggerCharacter;
+    else if (doubleTriggerCharacter && allowedTriggerCharacters.includes(doubleTriggerCharacter)) return doubleTriggerCharacter;
+    else if (singleTriggerCharacter && allowedTriggerCharacters.includes(singleTriggerCharacter)) return singleTriggerCharacter;
+    else return undefined;
+  }
 }
 
 /**
@@ -161,12 +169,13 @@ function splitTextAtCursor(nCharacters: number, position: vscode.Position): stri
   return [leftText.substring(-nCharacters), rightText.substring(0, nCharacters)];
 }
 
-async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string): Promise<any | undefined> {
+async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string, triggerKind: vscode.CompletionTriggerKind): Promise<any | undefined> {
   const textArray = splitTextAtCursor(AVERAGE_TOKEN_LENGHT_IN_CHARACTERS, position);
-  const triggerPoint = determineTriggerCharacter(document, position);
+  const triggerPoint = determineTriggerCharacter(document, position, triggerKind);
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];
   const textRight = textArray[1];
+
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
