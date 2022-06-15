@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+
+## [1.0.10]
 ### Changed
 - Send plugin version to server
 - Add support for unknown trigger points
