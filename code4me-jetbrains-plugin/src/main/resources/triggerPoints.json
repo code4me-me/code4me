@@ -18,7 +18,8 @@
     "not",
     "or",
     "is",
-    "with"
+    "with",
+    "except"
   ],
   "noSpace": [
     ".",
