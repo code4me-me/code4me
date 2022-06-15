@@ -15,9 +15,11 @@ public class Code4MeTriggerPointsService {
     private static final Gson gson = new Gson();
     private final Map<String, Boolean> triggerPointMap = new HashMap<>();
     private final int maxTriggerPointLength;
+    private final int maxNoSpaceTriggerPointLength;
 
     public Code4MeTriggerPointsService() throws IOException {
         int maxTriggerPointLength;
+        int maxNoSpaceTriggerPointLength;
         try (
                 InputStream in = getClass().getResourceAsStream("/triggerPoints.json");
                 InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(in))
@@ -29,8 +31,15 @@ public class Code4MeTriggerPointsService {
                     .mapToInt(String::length)
                     .max()
                     .orElse(0);
+            maxNoSpaceTriggerPointLength = triggerPointMap.entrySet().stream()
+                    .filter(entry -> Boolean.FALSE.equals(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .mapToInt(String::length)
+                    .max()
+                    .orElse(0);
         }
         this.maxTriggerPointLength = maxTriggerPointLength;
+        this.maxNoSpaceTriggerPointLength = maxNoSpaceTriggerPointLength;
     }
 
     public Boolean getTriggerPoint(String keyword) {
@@ -39,6 +48,10 @@ public class Code4MeTriggerPointsService {
 
     public int getMaxTriggerPointLength() {
         return maxTriggerPointLength;
+    }
+
+    public int getMaxNoSpaceTriggerPointLength() {
+        return maxNoSpaceTriggerPointLength;
     }
 
     private static class TriggerPoints {

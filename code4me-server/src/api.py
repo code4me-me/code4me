@@ -29,6 +29,8 @@ def autocomplete():
             ("triggerPoint", str, True),
             ("language", str, False),
             ("ide", str, False),
+            ("keybind", bool, True),
+            ("pluginVersion", str, True)
         ],
     )
     if res is not None:
@@ -53,7 +55,9 @@ def autocomplete():
             "predictions": predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000,
             "leftContextLength": len(left_context),
-            "rightContextLength": len(right_context)
+            "rightContextLength": len(right_context),
+            "keybind": values["keybind"],
+            "pluginVersion": values["pluginVersion"]
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
