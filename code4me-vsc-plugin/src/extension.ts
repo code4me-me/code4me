@@ -175,7 +175,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   if (triggerPoint === undefined) return undefined;
   const textLeft = textArray[0];
   const textRight = textArray[1];
-
+  
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -187,7 +187,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "triggerPoint": triggerPoint,
           "language": document.languageId,
           "ide": "vsc",
-          "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke ? true : false
+          "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke ? true : false,
+          "pluginVersion": vscode.extensions.getExtension('Code4Me.code4me-plugin')?.packageJSON['version']
         }
       ),
       headers: {
