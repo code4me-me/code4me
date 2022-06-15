@@ -186,7 +186,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "rightContext": textRight,
           "triggerPoint": triggerPoint,
           "language": document.languageId,
-          "ide": "vsc"
+          "ide": "vsc",
+          "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke ? true : false
         }
       ),
       headers: {
