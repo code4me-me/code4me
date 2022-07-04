@@ -35,5 +35,5 @@ services:
       - 3000
     environment:
       - CODE4ME_CUDA=True
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=1
       - "SURVEY_LINK=https://docs.google.com/forms/d/1uES5o6etbWEZVNpUc0TGisDJXIIuj5hIwa9tF7_FQuw/?entry.1566855902={user_id}"
