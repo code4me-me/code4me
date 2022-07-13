@@ -2,9 +2,8 @@ import glob
 import json
 import os
 import uuid
-import incoder
-import unixcoder_wrapper
 import random
+from model import Model
 from datetime import datetime
 
 from flask import Blueprint, request, Response, redirect
@@ -43,14 +42,16 @@ def autocomplete():
     right_context = values["rightContext"]
 
     t_before = datetime.now()
-    incoder_prediction = incoder.generate(left_context, right_context)
-    unixcoder_prediction = unixcoder_wrapper.generate(left_context, right_context)
-    t_after = datetime.now()
+    predictions = {}
+    unique_predictions_set = set()
+    for name, value in Model:
+        model_predictions = value[1](left_context, right_context)
+        predictions[name] = model_predictions
+        unique_predictions_set.update(model_predictions)
 
-    predictions = incoder_prediction
-    if incoder_prediction != unixcoder_prediction:
-        predictions += unixcoder_prediction
-        random.shuffle(predictions)
+    t_after = datetime.now()
+    unique_predictions = list(unique_predictions_set)
+    random.shuffle(unique_predictions)
 
     verify_token = uuid.uuid4().hex
 
@@ -60,9 +61,8 @@ def autocomplete():
             "triggerPoint": values["triggerPoint"],
             "language": values["language"].lower(),
             "ide": values["ide"].lower(),
-            "incoderPrediction": incoder_prediction,
-            "unixcoderPrediction": unixcoder_prediction,
-            "predictions": predictions,
+            "modelPredictions": predictions,
+            "predictions": unique_predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000,
             "leftContextLength": len(left_context),
             "rightContextLength": len(right_context),
