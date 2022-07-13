@@ -30,7 +30,8 @@ def autocomplete():
             ("language", str, False),
             ("ide", str, False),
             ("keybind", bool, True),
-            ("pluginVersion", str, True)
+            ("pluginVersion", str, True),
+            ("storeContext", bool, True)
         ],
     )
     if res is not None:
@@ -57,7 +58,9 @@ def autocomplete():
             "leftContextLength": len(left_context),
             "rightContextLength": len(right_context),
             "keybind": values["keybind"],
-            "pluginVersion": values["pluginVersion"]
+            "pluginVersion": values["pluginVersion"],
+            "leftContext": left_context if (values["storeContext"] is not None and values["storeContext"]) else None,
+            "rightContext": right_context if (values["storeContext"] is not None and values["storeContext"]) else None
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
