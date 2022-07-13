@@ -10,7 +10,6 @@ from datetime import datetime
 from flask import Blueprint, request, Response, redirect
 
 from limiter import limiter
-from model import Model
 
 v1 = Blueprint("v1", __name__)
 
