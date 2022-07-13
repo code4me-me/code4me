@@ -4,6 +4,7 @@ import com.intellij.openapi.ui.DialogWrapper;
 import me.code4me.plugin.Code4MeBundle;
 
 import javax.annotation.Nullable;
+import javax.swing.Box;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -29,18 +30,20 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        dialogPanel.setPreferredSize(new Dimension(330, 190));
-        dialogPanel.setMinimumSize(new Dimension(330, 190));
-        dialogPanel.setMaximumSize(new Dimension(330, 190));
+        dialogPanel.setPreferredSize(new Dimension(330, 160));
+        dialogPanel.setMinimumSize(new Dimension(330, 160));
+        dialogPanel.setMaximumSize(new Dimension(330, 160));
 
         contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
-
         triggerPoints.setText("Use trigger points");
         storeContext.setText("Allow storing completion context");
 
-        dialogPanel.add(contentLabel, BorderLayout.NORTH);
-        dialogPanel.add(triggerPoints, BorderLayout.LINE_END);
-        dialogPanel.add(storeContext, BorderLayout.PAGE_END);
+        Box box = Box.createVerticalBox();
+        box.add(contentLabel);
+        box.add(triggerPoints);
+        box.add(storeContext);
+
+        dialogPanel.add(box);
 
         return dialogPanel;
     }
