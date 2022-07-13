@@ -189,6 +189,15 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                                     completionCache.getOffset(),
                                     cxt.getDocument()
                             );
+                            String insertion = item.getLookupString();
+                            String[] lines = cxt.getDocument().getText().substring(completionCache.getOffset()).split("\n");
+                            String line = lines.length == 0 ? "" : lines[0];
+
+                            if (!insertion.equals(line)) {
+                                if (line.endsWith(")") || line.endsWith("}") || line.endsWith("]") || line.endsWith(">")) {
+                                    cxt.getDocument().deleteString(completionCache.getOffset() + insertion.length(), completionCache.getOffset() + insertion.length() + 1);
+                                }
+                            }
                         })
                         .withTypeText("Code4Me")
                 ));
