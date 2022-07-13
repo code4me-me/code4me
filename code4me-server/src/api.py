@@ -2,6 +2,9 @@ import glob
 import json
 import os
 import uuid
+import incoder
+import unixcoder_wrapper
+import random
 from datetime import datetime
 
 from flask import Blueprint, request, Response, redirect
@@ -17,7 +20,7 @@ os.makedirs("data", exist_ok=True)
 @v1.route("/prediction/autocomplete", methods=["POST"])
 @limiter.limit("1000/hour")
 def autocomplete():
-    user_token, model, res = get_model()
+    user_token, res = authorize_user()
     if res is not None:
         return res
 
@@ -41,8 +44,14 @@ def autocomplete():
     right_context = values["rightContext"]
 
     t_before = datetime.now()
-    predictions = model.value[1](left_context, right_context)
+    incoder_prediction = incoder.generate(left_context, right_context)
+    unixcoder_prediction = unixcoder_wrapper.generate(left_context, right_context)
     t_after = datetime.now()
+
+    predictions = incoder_prediction
+    if incoder_prediction != unixcoder_prediction:
+        predictions += unixcoder_prediction
+        random.shuffle(predictions)
 
     verify_token = uuid.uuid4().hex
 
@@ -52,7 +61,8 @@ def autocomplete():
             "triggerPoint": values["triggerPoint"],
             "language": values["language"].lower(),
             "ide": values["ide"].lower(),
-            "model": model.name,
+            "incoderPrediction": incoder_prediction,
+            "unixcoderPrediction": unixcoder_prediction,
             "predictions": predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000,
             "leftContextLength": len(left_context),
@@ -76,7 +86,7 @@ def autocomplete():
 @v1.route("/prediction/verify", methods=["POST"])
 @limiter.limit("1000/hour")
 def verify():
-    user_token, model, res = get_model()
+    user_token, res = authorize_user()
     if res is not None:
         return res
 
@@ -123,16 +133,15 @@ def survey():
     return redirect(os.getenv("SURVEY_LINK").replace("{user_id}", user_id), code=302)
 
 
-def get_model():
+def authorize_user():
     authorization = request.headers["Authorization"]
     if not authorization.startswith("Bearer "):
-        return None, None, response({
+        return None, response({
             "error": "Missing bearer token"
         }, status=401)
 
     user_token = authorization[len("Bearer "):]
-    n = int(user_token, 16)
-    return user_token, Model(n % len(Model)), None
+    return user_token, None
 
 
 def get_body_values(body, keys):
