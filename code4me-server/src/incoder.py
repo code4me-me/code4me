@@ -53,13 +53,17 @@ def decode(tokens):
 
 
 def generate(left_context: str, right_context: str):
+    left_context_tokenised = tokenizer(left_context, return_tensors="pt").input_ids[0]
+    right_context_tokenised = tokenizer(right_context, return_tensors="pt").input_ids[0]
+
     left_context = decode(util.truncate_left_context(
-        tokenizer(left_context, return_tensors="pt").input_ids[0],
-        1000
+        left_context_tokenised,
+        max(1000, 2000 - len(right_context_tokenised))
     ))
+
     right_context = decode(util.truncate_right_context(
-        tokenizer(right_context, return_tensors="pt").input_ids[0],
-        1000
+        right_context_tokenised,
+        max(1000, 2000 - len(left_context_tokenised))
     ))
 
     prompt = left_context + make_sentinel(0) + right_context + EOF + make_sentinel(1) + make_sentinel(0)
