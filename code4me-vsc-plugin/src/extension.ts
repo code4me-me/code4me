@@ -6,6 +6,10 @@ import fetch from 'node-fetch';
 const INFORMATION_WINDOW_CLOSE = "Close";
 const MAX_REQUEST_WINDOW_CLOSE_1_HOUR = "Close for 1 hour";
 const INFORMATION_WINDOW_DONT_SHOW_AGAIN = "Don't show again";
+const DATA_STORAGE_WINDOW_REQUEST_TEXT = "Allow data storage for research at the TU Delft?";
+const DATA_STORAGE_OPT_IN = "Settings";
+const DATA_STORAGE_OPT_OUT = "No";
+const DATA_STORAGE_READ_MORE = "Read more";
 const SURVEY_WINDOW_REQUEST_TEXT = "Do you mind filling in a quick survey about Code4Me?";
 const SURVEY_WINDOW_SURVEY = "Survey";
 
@@ -16,13 +20,15 @@ const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
 const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
 
-let promptSurvey = true;
+const configuration = vscode.workspace.getConfiguration('code4me', undefined);
 let promptMaxRequestWindow = true;
 
 export function activate(extensionContext: ExtensionContext) {
   if (!extensionContext.globalState.get('code4me-uuid')) {
     extensionContext.globalState.update('code4me-uuid', rand(128, 16));
   }
+
+  if (configuration.get('promptDataStorage')) doPromptDataStorageMenu();
 
   const code4MeUuid: string = extensionContext.globalState.get('code4me-uuid')!;
 
@@ -36,7 +42,10 @@ export function activate(extensionContext: ExtensionContext) {
 
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
+
+      const promptSurvey = configuration.get("code4me.promptSurvey");
       if (jsonResponse.survey && promptSurvey) doPromptSurvey(code4MeUuid);
+
 
       const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
       return listPredictionItems.map((prediction: string) => {
@@ -44,21 +53,19 @@ export function activate(extensionContext: ExtensionContext) {
         completionItem.sortText = '0.0000';
         if (prediction == "") return undefined;
         completionItem.insertText = prediction;
-        
+
         const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
         const positionPlusOne = new vscode.Position(position.line, position.character + 1);
         const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
         const characterAfterCursor = charactersAfterCursor.charAt(0);
-        
+
         const lastTwoCharacterOfPrediction = prediction.slice(-2);
         const lastCharacterOfPrediction = prediction.slice(-1);
 
-        if (characterAfterCursor === lastCharacterOfPrediction || lastTwoCharacterOfPrediction === '):') {
-          completionItem.range = new vscode.Range(position, positionPlusOne);
-        }
-        
-        if (charactersAfterCursor.length == 2 && lastTwoCharacterOfPrediction === '):') {
+        if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
           completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
+        } else if (characterAfterCursor === lastCharacterOfPrediction || lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
+          completionItem.range = new vscode.Range(position, positionPlusOne);
         }
 
         completionItem.command = {
@@ -84,9 +91,28 @@ function doPromptSurvey(code4MeUuid: string) {
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
     }
     if (selection === INFORMATION_WINDOW_DONT_SHOW_AGAIN) {
-      promptSurvey = false;
+      configuration.update('promptSurvey', false, true);
     }
   });
+}
+
+function doPromptDataStorageMenu() {
+  vscode.window.showInformationMessage(
+    DATA_STORAGE_WINDOW_REQUEST_TEXT,
+    DATA_STORAGE_OPT_IN,
+    DATA_STORAGE_OPT_OUT,
+    DATA_STORAGE_READ_MORE
+  ).then(selection => {
+    if (selection === DATA_STORAGE_OPT_IN) {
+      vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+    }
+    if (selection === DATA_STORAGE_READ_MORE) {
+      const url = `https://code4me.me/`;
+      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
+      vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+    }
+  });
+  configuration.update('promptDataStorage', false, true);
 }
 
 function showMaxRequestWindow(displayedText: string) {
@@ -195,6 +221,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   const textLeft = textArray[0];
   const textRight = textArray[1];
 
+  const configuration = vscode.workspace.getConfiguration('code4me', undefined);
+
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -207,7 +235,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "language": document.languageId,
           "ide": "vsc",
           "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke,
-          "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
+          "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version'],
+          "storeContext": configuration.get('storeContext')
         }
       ),
       headers: {

@@ -29,6 +29,31 @@
 		"*"
 	],
 	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "Code4Me",
+			"properties": {
+				"code4me.storeContext": {
+					"type": "boolean",
+					"default": false,
+					"description": "Allow the context of your code to be stored onto the servers of TU Delft for research purposes.",
+					"scope": "window"
+				},
+				"code4me.promptDataStorage": {
+					"type": "boolean",
+					"default": true,
+					"description": "Prompt the data storage request upon start-up.",
+					"scope": "window"
+				},
+				"code4me.promptSurvey": {
+					"type": "boolean",
+					"default": true,
+					"description": "Prompt the survey once in a while.",
+					"scope": "window"
+				}
+			}
+		}
+	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
