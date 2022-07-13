@@ -44,6 +44,23 @@ export function activate(extensionContext: ExtensionContext) {
         completionItem.sortText = '0.0000';
         if (prediction == "") return undefined;
         completionItem.insertText = prediction;
+        
+        const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
+        const positionPlusOne = new vscode.Position(position.line, position.character + 1);
+        const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
+        const characterAfterCursor = charactersAfterCursor.charAt(0);
+        
+        const lastTwoCharacterOfPrediction = prediction.slice(-2);
+        const lastCharacterOfPrediction = prediction.slice(-1);
+
+        if (characterAfterCursor === lastCharacterOfPrediction || lastTwoCharacterOfPrediction === '):') {
+          completionItem.range = new vscode.Range(position, positionPlusOne);
+        }
+        
+        if (charactersAfterCursor.length == 2 && lastTwoCharacterOfPrediction === '):') {
+          completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
+        }
+
         completionItem.command = {
           command: 'verifyInsertion',
           title: 'Verify Insertion',
