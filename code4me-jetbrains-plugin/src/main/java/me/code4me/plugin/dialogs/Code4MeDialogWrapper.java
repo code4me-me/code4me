@@ -16,6 +16,7 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     private final JPanel dialogPanel = new JPanel(new BorderLayout());
     private final JLabel contentLabel = new JLabel();
     private final JCheckBox triggerPoints = new JCheckBox();
+    private final JCheckBox storeContext = new JCheckBox();
 
     public Code4MeDialogWrapper() {
         super(true);
@@ -28,16 +29,18 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        dialogPanel.setPreferredSize(new Dimension(330, 150));
-        dialogPanel.setMinimumSize(new Dimension(330, 150));
-        dialogPanel.setMaximumSize(new Dimension(330, 150));
+        dialogPanel.setPreferredSize(new Dimension(330, 190));
+        dialogPanel.setMinimumSize(new Dimension(330, 190));
+        dialogPanel.setMaximumSize(new Dimension(330, 190));
 
         contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
 
         triggerPoints.setText("Use trigger points");
+        storeContext.setText("Allow storing completion context");
 
         dialogPanel.add(contentLabel, BorderLayout.NORTH);
-        dialogPanel.add(triggerPoints, BorderLayout.AFTER_LAST_LINE);
+        dialogPanel.add(triggerPoints, BorderLayout.LINE_END);
+        dialogPanel.add(storeContext, BorderLayout.PAGE_END);
 
         return dialogPanel;
     }
@@ -49,4 +52,13 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     public void setTriggerPointsSelected(boolean selected) {
         triggerPoints.setSelected(selected);
     }
+
+    public boolean isStoreContextSelected() {
+        return storeContext.isSelected();
+    }
+
+    public void setStoreContextSelected(boolean selected) {
+        storeContext.setSelected(selected);
+    }
+
 }

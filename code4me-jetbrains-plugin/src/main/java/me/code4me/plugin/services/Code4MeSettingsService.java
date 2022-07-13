@@ -24,7 +24,7 @@ public class Code4MeSettingsService {
 
         String settingsJson = PasswordSafe.getInstance().getPassword(credentialAttributes);
         if (settingsJson == null) {
-            this.settings = new Settings(generateToken(), true, false);
+            this.settings = new Settings(generateToken(), true, false, true);
             this.save();
         } else {
             this.settings = gson.fromJson(settingsJson, Settings.class);
@@ -52,11 +52,13 @@ public class Code4MeSettingsService {
         private String userToken;
         private boolean triggerPoints;
         private Boolean ignoringSurvey;
+        private boolean storeContext;
 
-        public Settings(String userToken, boolean triggerPoints, boolean ignoringSurvey) {
+        public Settings(String userToken, boolean triggerPoints, boolean ignoringSurvey, boolean storeContext) {
             this.userToken = userToken;
             this.triggerPoints = triggerPoints;
             this.ignoringSurvey = ignoringSurvey;
+            this.storeContext = storeContext;
         }
 
         public void setUserToken(String userToken) {
@@ -81,6 +83,14 @@ public class Code4MeSettingsService {
 
         public void setIgnoringSurvey(boolean ignoringSurvey) {
             this.ignoringSurvey = ignoringSurvey;
+        }
+
+        public boolean isStoreContext() {
+            return storeContext;
+        }
+
+        public void setStoreContext(boolean storeContext) {
+            this.storeContext = storeContext;
         }
     }
 }

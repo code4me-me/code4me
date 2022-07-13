@@ -3,12 +3,13 @@ package me.code4me.plugin.api;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
+import me.code4me.plugin.services.Code4MeSettingsService;
 import me.code4me.plugin.services.Code4MeTriggerPointsService;
 import org.jetbrains.annotations.Nullable;
 
 public class PredictionAutocompleteRequest {
 
-    private static final int MAX_CHARACTERS = 3992;
+    private static final int MAX_CHARACTERS = 7984;
 
     private final String leftContext;
     private final String rightContext;
@@ -17,7 +18,7 @@ public class PredictionAutocompleteRequest {
     private final String ide;
     private final boolean keybind;
     private final String pluginVersion;
-
+    private final boolean storeContext;
 
     private PredictionAutocompleteRequest(
             String leftContext,
@@ -25,7 +26,8 @@ public class PredictionAutocompleteRequest {
             String triggerPoint,
             String language,
             String ide,
-            boolean keybind
+            boolean keybind,
+            boolean storeContext
     ) {
         this.leftContext = leftContext;
         this.rightContext = rightContext;
@@ -34,6 +36,7 @@ public class PredictionAutocompleteRequest {
         this.ide = ide;
         this.keybind = keybind;
         this.pluginVersion = PluginManagerCore.getPlugin(PluginId.getId("me.code4me.plugin")).getVersion();
+        this.storeContext = storeContext;
     }
 
     public static PredictionAutocompleteRequest of(
@@ -49,6 +52,7 @@ public class PredictionAutocompleteRequest {
         String rightContext = text.substring(offset);
         String fixedLeftContext = leftContext.substring(Math.max(0, leftContext.length() - MAX_CHARACTERS));
         String fixedRightContext = rightContext.substring(0, Math.min(MAX_CHARACTERS, rightContext.length()));
+        boolean storeContext = project.getService(Code4MeSettingsService.class).getSettings().isStoreContext();
         boolean keybind = triggerPoint == null;
 
         if (keybind) {
@@ -76,7 +80,8 @@ public class PredictionAutocompleteRequest {
                 triggerPoint,
                 language,
                 ide,
-                keybind
+                keybind,
+                storeContext
         );
     }
 
@@ -106,5 +111,9 @@ public class PredictionAutocompleteRequest {
 
     public String getPluginVersion() {
         return pluginVersion;
+    }
+
+    public boolean isStoreContext() {
+        return storeContext;
     }
 }

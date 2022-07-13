@@ -36,8 +36,10 @@ public class Code4MeProjectManagerListener implements ProjectManagerListener {
 
         Code4MeDialogWrapper dialog = new Code4MeDialogWrapper();
         dialog.setTriggerPointsSelected(settings.isTriggerPoints());
+        dialog.setStoreContextSelected(settings.isStoreContext());
         if (dialog.showAndGet()) {
             settings.setTriggerPoints(dialog.isTriggerPointsSelected());
+            settings.setStoreContext(dialog.isStoreContextSelected());
             settingsService.save();
 
             Code4MeDocumentListenerService service = project.getService(Code4MeDocumentListenerService.class);
