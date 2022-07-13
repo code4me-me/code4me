@@ -9,7 +9,7 @@ const INFORMATION_WINDOW_DONT_SHOW_AGAIN = "Don't show again";
 const SURVEY_WINDOW_REQUEST_TEXT = "Do you mind filling in a quick survey about Code4Me?";
 const SURVEY_WINDOW_SURVEY = "Survey";
 
-const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 3992;
+const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 7984;
 
 const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
 
