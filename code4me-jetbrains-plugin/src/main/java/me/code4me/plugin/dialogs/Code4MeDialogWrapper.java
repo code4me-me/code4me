@@ -30,9 +30,9 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        dialogPanel.setPreferredSize(new Dimension(330, 160));
-        dialogPanel.setMinimumSize(new Dimension(330, 160));
-        dialogPanel.setMaximumSize(new Dimension(330, 160));
+        dialogPanel.setPreferredSize(new Dimension(330, 270));
+        dialogPanel.setMinimumSize(new Dimension(330, 270));
+        dialogPanel.setMaximumSize(new Dimension(330, 270));
 
         contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
         triggerPoints.setText("Use trigger points");
