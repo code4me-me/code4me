@@ -36,7 +36,8 @@ Content-Type: application/json
   "language": string,
   "ide": string,
   "keybind": boolean,
-  "pluginVersion": string
+  "pluginVersion": string,
+  "storeContext": boolean
 }
 ```
 - `leftContext`: the context left of the prediction
@@ -46,6 +47,7 @@ Content-Type: application/json
 - `ide`: the ide the request was fired from
 - `keybind`: a boolean indicating whether the keybind was used to autocomplete
 - `pluginVersion`: the version of the plugin that made the request
+- `storeContext`: a boolean indicating whether the user allows to store the context
 
 #### Response body
 ```
