@@ -34,6 +34,7 @@ import me.code4me.plugin.services.Code4MeSettingsService;
 import me.code4me.plugin.util.Code4MeUtil;
 import org.jetbrains.annotations.NotNull;
 import java.awt.EventQueue;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -177,8 +178,9 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
             ScheduledFuture<?> dataRequest = completionCache.getTimeoutSupplier().get();
 
+            ArrayList<LookupElement> elements = new ArrayList<>();
             for (String prediction : completionCache.getPredictions()) {
-                result.addElement(prioritize(LookupElementBuilder.create(prediction)
+                elements.add(prioritize(LookupElementBuilder.create(prediction)
                         .withIcon(Code4MeIcons.PLUGIN_ICON)
                         .withInsertHandler((cxt, item) -> {
                             if (!dataRequest.cancel(true)) return;
@@ -202,6 +204,8 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                         .withTypeText("Code4Me")
                 ));
             }
+            result.addAllElements(elements);
+
             completionCache.setEmpty(true);
         }
     }
