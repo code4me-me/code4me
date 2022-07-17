@@ -1,4 +1,12 @@
 # Change Log
+## [v1.0.8]
+### Added
+- **Optional** data storage of context code option.
+- Settings page.
+
+### Fixed
+- Syntax breaking suggestions with duplicate brackets at the end.
+
 ## [v1.0.7] - 2022-06-15
 ### Added
 - Identifying of manual or automatic trigger.
