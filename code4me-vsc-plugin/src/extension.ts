@@ -6,8 +6,9 @@ import fetch from 'node-fetch';
 const INFORMATION_WINDOW_CLOSE = "Close";
 const MAX_REQUEST_WINDOW_CLOSE_1_HOUR = "Close for 1 hour";
 const INFORMATION_WINDOW_DONT_SHOW_AGAIN = "Don't show again";
-const DATA_STORAGE_WINDOW_REQUEST_TEXT = "Allow data storage for research at the TU Delft?";
-const DATA_STORAGE_OPT_IN = "Settings";
+const DATA_STORAGE_WINDOW_REQUEST_TEXT = "To perform a failure analysis & improve code4me, we'd like to store the close context around completions. This data'll be stored anonymously & removed after 3 months. Would you like to participate in our study? We deeply appreciate your contribution.";
+const DATA_STORAGE_OPT_IN = "Yes";
+const DATA_STORAGE_REMIND_ME = "Remind Me";
 const DATA_STORAGE_OPT_OUT = "No";
 const DATA_STORAGE_READ_MORE = "Read more";
 const SURVEY_WINDOW_REQUEST_TEXT = "Do you mind filling in a quick survey about Code4Me?";
@@ -100,19 +101,24 @@ function doPromptDataStorageMenu() {
   vscode.window.showInformationMessage(
     DATA_STORAGE_WINDOW_REQUEST_TEXT,
     DATA_STORAGE_OPT_IN,
+    DATA_STORAGE_REMIND_ME,
     DATA_STORAGE_OPT_OUT,
     DATA_STORAGE_READ_MORE
   ).then(selection => {
     if (selection === DATA_STORAGE_OPT_IN) {
-      vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+      configuration.update('storeContext', true, true);
+      configuration.update('promptDataStorage', false, true);
+    }
+    if (selection === DATA_STORAGE_OPT_OUT) {
+      configuration.update('promptDataStorage', false, true);
     }
     if (selection === DATA_STORAGE_READ_MORE) {
       const url = `https://code4me.me/`;
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
       vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+      configuration.update('promptDataStorage', false, true);
     }
   });
-  configuration.update('promptDataStorage', false, true);
 }
 
 function showMaxRequestWindow(displayedText: string) {

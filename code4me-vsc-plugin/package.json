@@ -36,7 +36,7 @@
 				"code4me.storeContext": {
 					"type": "boolean",
 					"default": false,
-					"description": "Allow the context of your code to be stored onto the servers of TU Delft for research purposes.",
+					"description": "Allow the context of your code to be stored anonymously onto the servers of TU Delft for research purposes. This data will be removed after 3 months.",
 					"scope": "window"
 				},
 				"code4me.promptDataStorage": {
