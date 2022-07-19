@@ -19,12 +19,14 @@ The Code4Me plugin can be found in the [Visual Studio Code Marketplace](https://
 The plugin works with a remote API in order to suggest autocompletions. After triggering the autocompletion (automatically or manually), the client's request is sent to the server. Running the ML-based model, the server returns a prediction in response to the client. The remote API requires a segment of the current document (close left context at the trigger point). This limited segment is sent to the backend server only for prediction and will not be stored on our server. 
 For the purpose of evaluating the models' predictions, we only store the suggestion made by the ML-based models at each trigger point and compare it against the accepted prediction by users (collected after 30 seconds). 
 
-The plugin does not collect personal data nor the segment sent. The plugin does collect the following data:
+The plugin does not collect personal data nor the segment sent by default. The plugin does collect the following data:
 
 * Suggested autocompletion.
 * Verification of the autocompletion.
   * The plugin tracks the line the code was inserted and sends that line to the server after 30 seconds.
 * Inference time of completion.
+
+One of our research goals is to identify where and why code autocompletion fails and how it can be improved. Hence, we would like to conduct a failure analysis on the completions provided by code4me. To this end, we need to study the code context fed to our models based on which the predictions are made. This context includes a number of code tokens before and after the completion point. This is an **optional** setting and this data will be collected anonymously. The data will only be stored for three months to perform the failure analysis. After this period, we *completely* remove this data.
 
 Furthermore, Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the study. By using Code4Me you give permission for the data collection.
 
