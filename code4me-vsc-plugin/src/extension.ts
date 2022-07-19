@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ExtensionContext } from 'vscode';
 import rand from 'csprng';
 import fetch from 'node-fetch';
+import * as path from 'path';
 
 const INFORMATION_WINDOW_CLOSE = "Close";
 const MAX_REQUEST_WINDOW_CLOSE_1_HOUR = "Close for 1 hour";
@@ -105,18 +106,22 @@ function doPromptDataStorageMenu() {
     DATA_STORAGE_OPT_OUT,
     DATA_STORAGE_READ_MORE
   ).then(selection => {
-    if (selection === DATA_STORAGE_OPT_IN) {
-      configuration.update('storeContext', true, true);
-      configuration.update('promptDataStorage', false, true);
-    }
-    if (selection === DATA_STORAGE_OPT_OUT) {
-      configuration.update('promptDataStorage', false, true);
-    }
-    if (selection === DATA_STORAGE_READ_MORE) {
-      const url = `https://code4me.me/`;
-      vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
-      vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
-      configuration.update('promptDataStorage', false, true);
+    switch (selection) {
+      case DATA_STORAGE_OPT_IN:
+        configuration.update('storeContext', true, true);
+        configuration.update('promptDataStorage', false, true);
+        break;
+      case DATA_STORAGE_OPT_OUT:
+        configuration.update('promptDataStorage', false, true);
+        break;
+      case DATA_STORAGE_READ_MORE:
+        const url = `https://code4me.me/`;
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
+        vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+        configuration.update('promptDataStorage', false, true);
+        break;
+      default:
+        break;
     }
   });
 }
@@ -228,7 +233,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   const textRight = textArray[1];
 
   const configuration = vscode.workspace.getConfiguration('code4me', undefined);
-
+  
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -238,7 +243,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "leftContext": textLeft,
           "rightContext": textRight,
           "triggerPoint": triggerPoint,
-          "language": document.languageId,
+          "language": path.parse(document.fileName).ext,
           "ide": "vsc",
           "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke,
           "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version'],
