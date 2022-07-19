@@ -40,6 +40,7 @@ def autocomplete():
 
     left_context = values["leftContext"]
     right_context = values["rightContext"]
+    store_context = values.get("storeContext", False) is True
 
     t_before = datetime.now()
     predictions = {}
@@ -68,8 +69,8 @@ def autocomplete():
             "rightContextLength": len(right_context),
             "keybind": values["keybind"],
             "pluginVersion": values["pluginVersion"],
-            "leftContext": left_context if (values["storeContext"] is not None and values["storeContext"]) else None,
-            "rightContext": right_context if (values["storeContext"] is not None and values["storeContext"]) else None
+            "leftContext": left_context if store_context else None,
+            "rightContext": right_context if store_context else None
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
