@@ -10,6 +10,6 @@ public class Code4MeUtil {
     public static String getLanguage(Project project, Document doc) {
         PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(doc);
         if (psiFile == null) return "unknown";
-        return psiFile.getLanguage().getID();
+        return psiFile.getFileType().getDefaultExtension();
     }
 }
