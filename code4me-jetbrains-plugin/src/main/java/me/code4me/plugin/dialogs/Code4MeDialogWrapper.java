@@ -36,7 +36,7 @@ public class Code4MeDialogWrapper extends DialogWrapper {
 
         contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
         triggerPoints.setText("Use trigger points");
-        storeContext.setText("Allow storing completion context");
+storeContext.setText("Allow storing of completion context");
 
         Box box = Box.createVerticalBox();
         box.add(contentLabel);

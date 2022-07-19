@@ -178,6 +178,7 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
             ScheduledFuture<?> dataRequest = completionCache.getTimeoutSupplier().get();
 
+            // Need to add all elements in one go to avoid split
             ArrayList<LookupElement> elements = new ArrayList<>();
             for (String prediction : completionCache.getPredictions()) {
                 elements.add(prioritize(LookupElementBuilder.create(prediction)
