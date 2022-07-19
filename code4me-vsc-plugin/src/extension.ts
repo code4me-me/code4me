@@ -2,27 +2,35 @@ import * as vscode from 'vscode';
 import { ExtensionContext } from 'vscode';
 import rand from 'csprng';
 import fetch from 'node-fetch';
+import * as path from 'path';
 
 const INFORMATION_WINDOW_CLOSE = "Close";
 const MAX_REQUEST_WINDOW_CLOSE_1_HOUR = "Close for 1 hour";
 const INFORMATION_WINDOW_DONT_SHOW_AGAIN = "Don't show again";
+const DATA_STORAGE_WINDOW_REQUEST_TEXT = "To perform a failure analysis & improve code4me, we'd like to store the close context around completions. This data'll be stored anonymously & removed after 3 months. Would you like to participate in our study? We deeply appreciate your contribution.";
+const DATA_STORAGE_OPT_IN = "Yes";
+const DATA_STORAGE_REMIND_ME = "Remind Me";
+const DATA_STORAGE_OPT_OUT = "No";
+const DATA_STORAGE_READ_MORE = "Read more";
 const SURVEY_WINDOW_REQUEST_TEXT = "Do you mind filling in a quick survey about Code4Me?";
 const SURVEY_WINDOW_SURVEY = "Survey";
 
-const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 3992;
+const AVERAGE_TOKEN_LENGHT_IN_CHARACTERS = 7984;
 
 const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
 
 const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
 
-let promptSurvey = true;
+const configuration = vscode.workspace.getConfiguration('code4me', undefined);
 let promptMaxRequestWindow = true;
 
 export function activate(extensionContext: ExtensionContext) {
   if (!extensionContext.globalState.get('code4me-uuid')) {
     extensionContext.globalState.update('code4me-uuid', rand(128, 16));
   }
+
+  if (configuration.get('promptDataStorage')) doPromptDataStorageMenu();
 
   const code4MeUuid: string = extensionContext.globalState.get('code4me-uuid')!;
 
@@ -36,7 +44,10 @@ export function activate(extensionContext: ExtensionContext) {
 
       if (listPredictionItems.length == 0) return undefined;
       const completionToken = jsonResponse.verifyToken;
+
+      const promptSurvey = configuration.get("code4me.promptSurvey");
       if (jsonResponse.survey && promptSurvey) doPromptSurvey(code4MeUuid);
+
 
       const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
       return listPredictionItems.map((prediction: string) => {
@@ -44,6 +55,21 @@ export function activate(extensionContext: ExtensionContext) {
         completionItem.sortText = '0.0000';
         if (prediction == "") return undefined;
         completionItem.insertText = prediction;
+
+        const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
+        const positionPlusOne = new vscode.Position(position.line, position.character + 1);
+        const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
+        const characterAfterCursor = charactersAfterCursor.charAt(0);
+
+        const lastTwoCharacterOfPrediction = prediction.slice(-2);
+        const lastCharacterOfPrediction = prediction.slice(-1);
+
+        if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
+          completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
+        } else if (characterAfterCursor === lastCharacterOfPrediction) {
+          completionItem.range = new vscode.Range(position, positionPlusOne);
+        }
+
         completionItem.command = {
           command: 'verifyInsertion',
           title: 'Verify Insertion',
@@ -67,7 +93,35 @@ function doPromptSurvey(code4MeUuid: string) {
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
     }
     if (selection === INFORMATION_WINDOW_DONT_SHOW_AGAIN) {
-      promptSurvey = false;
+      configuration.update('promptSurvey', false, true);
+    }
+  });
+}
+
+function doPromptDataStorageMenu() {
+  vscode.window.showInformationMessage(
+    DATA_STORAGE_WINDOW_REQUEST_TEXT,
+    DATA_STORAGE_OPT_IN,
+    DATA_STORAGE_REMIND_ME,
+    DATA_STORAGE_OPT_OUT,
+    DATA_STORAGE_READ_MORE
+  ).then(selection => {
+    switch (selection) {
+      case DATA_STORAGE_OPT_IN:
+        configuration.update('storeContext', true, true);
+        configuration.update('promptDataStorage', false, true);
+        break;
+      case DATA_STORAGE_OPT_OUT:
+        configuration.update('promptDataStorage', false, true);
+        break;
+      case DATA_STORAGE_READ_MORE:
+        const url = `https://code4me.me/`;
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
+        vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
+        configuration.update('promptDataStorage', false, true);
+        break;
+      default:
+        break;
     }
   });
 }
@@ -178,6 +232,8 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
   const textLeft = textArray[0];
   const textRight = textArray[1];
 
+  const configuration = vscode.workspace.getConfiguration('code4me', undefined);
+  
   try {
     const url = "https://code4me.me/api/v1/prediction/autocomplete";
     const response = await fetch(url, {
@@ -187,10 +243,11 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "leftContext": textLeft,
           "rightContext": textRight,
           "triggerPoint": triggerPoint,
-          "language": document.languageId,
+          "language": path.parse(document.fileName).ext,
           "ide": "vsc",
           "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke,
-          "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
+          "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version'],
+          "storeContext": configuration.get('storeContext')
         }
       ),
       headers: {

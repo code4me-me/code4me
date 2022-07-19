@@ -10,12 +10,15 @@ Code4Me does not hinder native auto completion or other extensions. For more inf
 Code4Me is made by bachelor students at [Delft University of Technology](https://www.tudelft.nl/). Code4Me is a supportive tool to gather data about auto-completion models and their usefulness. This data is then analysed and discussed in a BSc thesis.
 
 ## Data Collection
-The plugin does **not** collect personal data. The plugin does collect the following data:
+The plugin does **not** collect identifiable data. The plugin does collect the following data:
 
 * Suggest insertion.
 * Verified insertion.
   - The plugin tracks the line the code was inserted and sends that line to the server after a timeout.
 * Time of completion.
+
+### Optional Data Collection
+To perform a failure analysis & improve code4me, we would like to store the close context before completions. This, however, is an **optional** setting and is turned off by default. We do not store the context around completions without explicit approval. This request is prompted upon start-up.
 
 Code4Me is in full compliance with the GDPR and all data is anonymous. The data collected will remain on the servers of TU Delft until the end of the study. By using Code4Me you give permission for data collection. 
 
