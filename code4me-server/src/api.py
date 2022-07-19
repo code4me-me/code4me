@@ -2,12 +2,13 @@ import glob
 import json
 import os
 import uuid
+import random
+from model import Model
 from datetime import datetime
 
 from flask import Blueprint, request, Response, redirect
 
 from limiter import limiter
-from model import Model
 
 v1 = Blueprint("v1", __name__)
 
@@ -17,7 +18,7 @@ os.makedirs("data", exist_ok=True)
 @v1.route("/prediction/autocomplete", methods=["POST"])
 @limiter.limit("1000/hour")
 def autocomplete():
-    user_token, model, res = get_model()
+    user_token, res = authorize_user()
     if res is not None:
         return res
 
@@ -30,7 +31,8 @@ def autocomplete():
             ("language", str, False),
             ("ide", str, False),
             ("keybind", bool, True),
-            ("pluginVersion", str, True)
+            ("pluginVersion", str, True),
+            ("storeContext", bool, True)
         ],
     )
     if res is not None:
@@ -38,10 +40,19 @@ def autocomplete():
 
     left_context = values["leftContext"]
     right_context = values["rightContext"]
+    store_context = values.get("storeContext", False) is True
 
     t_before = datetime.now()
-    predictions = model.value[1](left_context, right_context)
+    predictions = {}
+    unique_predictions_set = set()
+    for name, value in Model:
+        model_predictions = value[1](left_context, right_context)
+        predictions[name] = model_predictions
+        unique_predictions_set.update(model_predictions)
+
     t_after = datetime.now()
+    unique_predictions = list(unique_predictions_set)
+    random.shuffle(unique_predictions)
 
     verify_token = uuid.uuid4().hex
 
@@ -51,13 +62,15 @@ def autocomplete():
             "triggerPoint": values["triggerPoint"],
             "language": values["language"].lower(),
             "ide": values["ide"].lower(),
-            "model": model.name,
-            "predictions": predictions,
+            "modelPredictions": predictions,
+            "predictions": unique_predictions,
             "inferenceTime": (t_after - t_before).total_seconds() * 1000,
             "leftContextLength": len(left_context),
             "rightContextLength": len(right_context),
             "keybind": values["keybind"],
-            "pluginVersion": values["pluginVersion"]
+            "pluginVersion": values["pluginVersion"],
+            "leftContext": left_context if store_context else None,
+            "rightContext": right_context if store_context else None
         }))
 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
@@ -73,7 +86,7 @@ def autocomplete():
 @v1.route("/prediction/verify", methods=["POST"])
 @limiter.limit("1000/hour")
 def verify():
-    user_token, model, res = get_model()
+    user_token, res = authorize_user()
     if res is not None:
         return res
 
@@ -120,16 +133,15 @@ def survey():
     return redirect(os.getenv("SURVEY_LINK").replace("{user_id}", user_id), code=302)
 
 
-def get_model():
+def authorize_user():
     authorization = request.headers["Authorization"]
     if not authorization.startswith("Bearer "):
-        return None, None, response({
+        return None, response({
             "error": "Missing bearer token"
         }, status=401)
 
     user_token = authorization[len("Bearer "):]
-    n = int(user_token, 16)
-    return user_token, Model(n % len(Model)), None
+    return user_token, None
 
 
 def get_body_values(body, keys):

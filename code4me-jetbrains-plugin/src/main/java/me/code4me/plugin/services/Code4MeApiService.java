@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import me.code4me.plugin.Code4MeBundle;
 import me.code4me.plugin.api.PredictionAutocompleteRequest;
 import me.code4me.plugin.api.PredictionAutocompleteResponse;
 import me.code4me.plugin.api.PredictionVerifyRequest;
@@ -53,15 +54,16 @@ public class Code4MeApiService {
         CompletableFuture<PredictionAutocompleteResponse> future = new CompletableFuture<>();
 
         if (lock.getAndSet(true)) {
-            future.completeExceptionally(new AlreadyAutocompletingException("You are already autocompleting!"));
+            future.completeExceptionally(new AlreadyAutocompletingException());
             return future;
         }
 
         String token = project.getService(Code4MeSettingsService.class).getSettings().getUserToken();
 
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Idk", false) {
+        String autocompleting = Code4MeBundle.message("auto-completing");
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, autocompleting, false) {
             public void run(@NotNull ProgressIndicator indicator) {
-                indicator.setText("Autocompleting...");
+                indicator.setText(autocompleting);
 
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
                     HttpPost httpPost = new HttpPost(BASE_URL + PREDICTION_AUTOCOMPLETE_ENDPOINT);

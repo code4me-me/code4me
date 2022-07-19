@@ -34,6 +34,7 @@ import me.code4me.plugin.services.Code4MeSettingsService;
 import me.code4me.plugin.util.Code4MeUtil;
 import org.jetbrains.annotations.NotNull;
 import java.awt.EventQueue;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -91,7 +92,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
             EventQueue.invokeLater(() -> {
                 if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
-                    HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
+                    HintManager.getInstance().showInformationHint(
+                            editor,
+                            Code4MeBundle.message("no-suggestions-available")
+                    );
                 } else {
                     String verifyToken = res.getVerifyToken();
                     completionCache.setPredictions(predictions);
@@ -177,8 +181,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
             ScheduledFuture<?> dataRequest = completionCache.getTimeoutSupplier().get();
 
+            // Need to add all elements in one go to avoid split
+            ArrayList<LookupElement> elements = new ArrayList<>();
             for (String prediction : completionCache.getPredictions()) {
-                result.addElement(prioritize(LookupElementBuilder.create(prediction)
+                elements.add(prioritize(LookupElementBuilder.create(prediction)
                         .withIcon(Code4MeIcons.PLUGIN_ICON)
                         .withInsertHandler((cxt, item) -> {
                             if (!dataRequest.cancel(true)) return;
@@ -189,10 +195,21 @@ public class Code4MeCompletionContributor extends CompletionContributor {
                                     completionCache.getOffset(),
                                     cxt.getDocument()
                             );
+                            String insertion = item.getLookupString();
+                            String[] lines = cxt.getDocument().getText().substring(completionCache.getOffset()).split("\n");
+                            String line = lines.length == 0 ? "" : lines[0];
+
+                            if (!insertion.equals(line)) {
+                                if (line.endsWith(")") || line.endsWith("}") || line.endsWith("]") || line.endsWith(">")) {
+                                    cxt.getDocument().deleteString(completionCache.getOffset() + insertion.length(), completionCache.getOffset() + insertion.length() + 1);
+                                }
+                            }
                         })
                         .withTypeText("Code4Me")
                 ));
             }
+            result.addAllElements(elements);
+
             completionCache.setEmpty(true);
         }
     }

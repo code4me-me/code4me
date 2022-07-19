@@ -13,8 +13,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class Code4MeProjectManagerListener implements ProjectManagerListener {
 
-
-
     @Override
     public void projectOpened(@NotNull Project project) {
         NotificationGroupManager.getInstance()
@@ -36,8 +34,10 @@ public class Code4MeProjectManagerListener implements ProjectManagerListener {
 
         Code4MeDialogWrapper dialog = new Code4MeDialogWrapper();
         dialog.setTriggerPointsSelected(settings.isTriggerPoints());
+        dialog.setStoreContextSelected(settings.isStoreContext());
         if (dialog.showAndGet()) {
             settings.setTriggerPoints(dialog.isTriggerPointsSelected());
+            settings.setStoreContext(dialog.isStoreContextSelected());
             settingsService.save();
 
             Code4MeDocumentListenerService service = project.getService(Code4MeDocumentListenerService.class);
@@ -48,8 +48,6 @@ public class Code4MeProjectManagerListener implements ProjectManagerListener {
             }
         }
     }
-
-
 
     @Override
     public void projectClosed(@NotNull Project project) {
