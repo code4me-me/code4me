@@ -1,8 +1,10 @@
 # Change Log
-## [v1.0.8]
+## [v1.0.8] - 2022-07-19
 ### Added
-- **Optional** data storage of context code option.
+- **Optional** data storage of context code option, by default false.
 - Settings page.
+- Send along .ext instead of natural language of ext.
+- Receive multiple Code4Me suggestions.
 
 ### Fixed
 - Syntax breaking suggestions with duplicate brackets at the end.
