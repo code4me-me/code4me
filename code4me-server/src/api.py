@@ -45,9 +45,9 @@ def autocomplete():
     t_before = datetime.now()
     predictions = {}
     unique_predictions_set = set()
-    for name, value in Model:
-        model_predictions = value[1](left_context, right_context)
-        predictions[name] = model_predictions
+    for model in Model:
+        model_predictions = model.value[1](left_context, right_context)
+        predictions[model.name] = model_predictions
         unique_predictions_set.update(model_predictions)
 
     t_after = datetime.now()
