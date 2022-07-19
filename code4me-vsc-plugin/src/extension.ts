@@ -65,7 +65,7 @@ export function activate(extensionContext: ExtensionContext) {
 
         if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
           completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
-        } else if (characterAfterCursor === lastCharacterOfPrediction || lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
+        } else if (characterAfterCursor === lastCharacterOfPrediction) {
           completionItem.range = new vscode.Range(position, positionPlusOne);
         }
 
