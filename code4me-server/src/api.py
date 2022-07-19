@@ -77,7 +77,7 @@ def autocomplete():
     survey = n_suggestions >= 100 and n_suggestions % 50 == 0
 
     return response({
-        "predictions": predictions,
+        "predictions": unique_predictions,
         "verifyToken": verify_token,
         "survey": survey
     })
