@@ -92,7 +92,10 @@ public class Code4MeCompletionContributor extends CompletionContributor {
 
             EventQueue.invokeLater(() -> {
                 if (predictions == null || Arrays.stream(predictions).allMatch(String::isBlank)) {
-                    HintManager.getInstance().showInformationHint(editor, "No Code4Me Suggestions available");
+                    HintManager.getInstance().showInformationHint(
+                            editor,
+                            Code4MeBundle.message("no-suggestions-available")
+                    );
                 } else {
                     String verifyToken = res.getVerifyToken();
                     completionCache.setPredictions(predictions);

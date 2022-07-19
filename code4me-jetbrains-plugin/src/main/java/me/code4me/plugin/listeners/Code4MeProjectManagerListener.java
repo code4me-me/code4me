@@ -13,8 +13,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class Code4MeProjectManagerListener implements ProjectManagerListener {
 
-
-
     @Override
     public void projectOpened(@NotNull Project project) {
         NotificationGroupManager.getInstance()
@@ -50,8 +48,6 @@ public class Code4MeProjectManagerListener implements ProjectManagerListener {
             }
         }
     }
-
-
 
     @Override
     public void projectClosed(@NotNull Project project) {

@@ -14,6 +14,9 @@ import java.awt.Dimension;
 
 public class Code4MeDialogWrapper extends DialogWrapper {
 
+    private static final int WIDTH = 330;
+    private static final int HEIGHT = 270;
+
     private final JPanel dialogPanel = new JPanel(new BorderLayout());
     private final JLabel contentLabel = new JLabel();
     private final JCheckBox triggerPoints = new JCheckBox();
@@ -21,7 +24,7 @@ public class Code4MeDialogWrapper extends DialogWrapper {
 
     public Code4MeDialogWrapper() {
         super(true);
-        setTitle(Code4MeBundle.message("project-opened-setup-title"));
+        setTitle(Code4MeBundle.message("settings-title"));
         init();
         pack();
         setResizable(false);
@@ -30,13 +33,14 @@ public class Code4MeDialogWrapper extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        dialogPanel.setPreferredSize(new Dimension(330, 270));
-        dialogPanel.setMinimumSize(new Dimension(330, 270));
-        dialogPanel.setMaximumSize(new Dimension(330, 270));
+        Dimension dimension = new Dimension(WIDTH, HEIGHT);
+        dialogPanel.setPreferredSize(dimension);
+        dialogPanel.setMinimumSize(dimension);
+        dialogPanel.setMaximumSize(dimension);
 
-        contentLabel.setText("<html>"+ Code4MeBundle.message("project-opened-setup-content") +"</html>");
-        triggerPoints.setText("Use trigger points");
-storeContext.setText("Allow storing of completion context");
+        contentLabel.setText("<html>" + Code4MeBundle.message("settings-content") + "</html>");
+        triggerPoints.setText(Code4MeBundle.message("settings-trigger-points"));
+        storeContext.setText(Code4MeBundle.message("settings-store-context"));
 
         Box box = Box.createVerticalBox();
         box.add(contentLabel);
