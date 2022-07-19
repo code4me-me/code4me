@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+
+## [1.0.11]
 ### Changed
 - Allowing storing of context
 - Increase max context length
