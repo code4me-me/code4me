@@ -3,6 +3,10 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Changed
+- Allowing storing of context
+- Increase max context length
+- Fixed redundant bracket when completing
 
 ## [1.0.10]
 ### Changed
