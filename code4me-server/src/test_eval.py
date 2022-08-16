@@ -102,7 +102,7 @@ def classify_scores(model_data, model_scores):
 
 
 if __name__ == '__main__':
-    data_folder = '../data'
+    data_folder = '../data_10_7_2022'
     directory = os.fsencode(data_folder)
     incoder = []
     incoder_scores = []
@@ -113,6 +113,11 @@ if __name__ == '__main__':
     trigger_points = {}
     inf_time = []
     token_length = {}
+    languages = {}
+    context_length = 0
+    data_points = 0
+    valid_data = 0
+    ide = {}
 
     for file in os.listdir(directory):
         filename = data_folder + '/' + os.fsdecode(file)
@@ -124,12 +129,37 @@ if __name__ == '__main__':
             except:
                 continue
 
+            data_points += 1
+            # continue if data point invalid
+            if is_not_valid_data(data):
+                continue
+            valid_data += 1
+
+            if data['language'] not in languages:
+                languages[data['language']] = 1
+            else:
+                languages[data['language']] += 1
+
+            if 'leftContextLength' in data and data['leftContextLength'] is not None:
+                context_length += 1
+
+            if 'pluginVersion' in data:
+                pv = data['pluginVersion']
+                if pv is None:
+                    pv = 'not_updated'
+
+                if data['ide'] + '_' + pv not in ide:
+                    ide[data['ide'] + '_' + pv] = 1
+                else:
+                    ide[data['ide'] + '_' + pv] += 1
+            else:
+                if data['ide'] + '_old' not in ide:
+                    ide[data['ide'] + '_old'] = 1
+                else:
+                    ide[data['ide'] + '_old'] += 1
+
             # check if language is valid for study
             if data['language'] == 'python':
-
-                # continue if data point invalid
-                if is_not_valid_data(data):
-                    continue
 
                 # add data to correct model
                 if data['model'] == 'InCoder' or data['model'] == 'CodeFill':
@@ -137,15 +167,29 @@ if __name__ == '__main__':
                 else:
                     unixcoder.append(data)
 
-    print("incoder:")
-    classify_scores(incoder, incoder_scores)
+    print('data', data_points)
+    print('valid_data', valid_data)
+    print('context_length_data', context_length)
+    print(ide)
+    # temp = []
+    # for k, v in languages.items():
+    #     if v < 1000:
+    #         temp.append(k)
+    #
+    # for y in temp:
+    #     del languages[y]
+    print(languages)
 
-    # empty arrays and dicts for next model scores
-    chosen = []
-    not_chosen = []
-    trigger_points = {}
-    inf_time = []
-    token_length = {}
 
-    print("unixcoder:")
-    classify_scores(unixcoder, unixcoder_scores)
+    # print("incoder:")
+    # classify_scores(incoder, incoder_scores)
+    #
+    # # empty arrays and dicts for next model scores
+    # chosen = []
+    # not_chosen = []
+    # trigger_points = {}
+    # inf_time = []
+    # token_length = {}
+    #
+    # print("unixcoder:")
+    # classify_scores(unixcoder, unixcoder_scores)
