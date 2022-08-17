@@ -106,6 +106,8 @@ function doPromptDataStorageMenu() {
     DATA_STORAGE_OPT_OUT,
     DATA_STORAGE_READ_MORE
   ).then(selection => {
+    const url = `https://code4me.me/`;
+
     switch (selection) {
       case DATA_STORAGE_OPT_IN:
         configuration.update('storeContext', true, true);
@@ -115,7 +117,6 @@ function doPromptDataStorageMenu() {
         configuration.update('promptDataStorage', false, true);
         break;
       case DATA_STORAGE_READ_MORE:
-        const url = `https://code4me.me/`;
         vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
         vscode.commands.executeCommand("workbench.action.openSettings", "code4me.storeContext");
         configuration.update('promptDataStorage', false, true);
@@ -243,7 +244,7 @@ async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vsc
           "leftContext": textLeft,
           "rightContext": textRight,
           "triggerPoint": triggerPoint,
-          "language": path.parse(document.fileName).ext,
+          "language": document.fileName.split('.').pop(),
           "ide": "vsc",
           "keybind": triggerKind === vscode.CompletionTriggerKind.Invoke,
           "pluginVersion": vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version'],
