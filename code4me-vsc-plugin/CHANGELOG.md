@@ -1,5 +1,8 @@
 # Change Log
 ## [v1.0.9] - 2022-08-17
+### Fixed
+- Fix improper syntax upon suggestion ending in '),'.
+
 ### Changed
 - Send along ext (excluding the dot).
 

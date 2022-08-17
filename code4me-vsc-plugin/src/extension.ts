@@ -64,7 +64,7 @@ export function activate(extensionContext: ExtensionContext) {
         const lastTwoCharacterOfPrediction = prediction.slice(-2);
         const lastCharacterOfPrediction = prediction.slice(-1);
 
-        if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');') {
+        if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');' || lastTwoCharacterOfPrediction === '),') {
           completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
         } else if (characterAfterCursor === lastCharacterOfPrediction) {
           completionItem.range = new vscode.Range(position, positionPlusOne);
