@@ -1,4 +1,11 @@
 # Change Log
+## [v1.0.9] - 2022-08-17
+### Fixed
+- Fix improper syntax upon suggestion ending in '),'.
+
+### Changed
+- Send along ext (excluding the dot).
+
 ## [v1.0.8] - 2022-07-19
 ### Added
 - **Optional** data storage of context code option, by default false.
