@@ -154,8 +154,6 @@ def add_data(language_key, d, data):
 if __name__ == '__main__':
     data_folder = '../data_16_08_2022'
     directory = os.fsencode(data_folder)
-    incoder_scores = []
-    unixcoder_scores = []
     data_dict = {
         'python': {
             'incoder': [],
