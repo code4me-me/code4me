@@ -245,7 +245,7 @@ def get_language(language):
 
 
 if __name__ == '__main__':
-    data_folder = '../data_16_08_2022'
+    data_folder = '../data'
     directory = os.fsencode(data_folder)
     data_dict = {
         'python': {},
@@ -296,7 +296,6 @@ if __name__ == '__main__':
 
     for file in os.listdir(directory):
         filename = data_folder + '/' + os.fsdecode(file)
-        # user = filename.split('-')[0].split('/')[2]
 
         with open(filename) as json_file:
             try:
