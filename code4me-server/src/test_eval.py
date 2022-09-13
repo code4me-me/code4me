@@ -47,7 +47,7 @@ def get_prediction(d):
     return p.strip()
 
 
-def classify_scores(model_data):
+def classify_scores(model_data, l):
     chosen = []
     not_chosen = []
     trigger_points = {}
@@ -61,7 +61,7 @@ def classify_scores(model_data):
         # calculate score
         truth = d['groundTruth'].strip()
         pred = get_prediction(d)
-        s = evaluation.compute(truth, pred)
+        s = evaluation.compute(truth, pred, l)
 
         # add score to correct model set
         model_scores.append(s)
@@ -82,7 +82,7 @@ def classify_scores(model_data):
         inf_time.append(d['inferenceTime'])
 
         # add token length to dictionary
-        tokenized_pred = tokenize_code(pred)[0]
+        tokenized_pred = tokenize_code(pred, l)[0]
         if str(len(tokenized_pred)) not in token_length:
             token_length[str(len(tokenized_pred))] = [s]
         else:
@@ -123,12 +123,12 @@ def classify_scores(model_data):
             print_scores(tp_scores)
 
 
-def classify_all_scores(language_dict):
+def classify_all_scores(language_dict, l):
     print('incoder:')
-    classify_scores(language_dict['incoder'])
+    classify_scores(language_dict['incoder'], l)
 
     print('unixcoder:')
-    classify_scores(language_dict['unixcoder'])
+    classify_scores(language_dict['unixcoder'], l)
 
 
 def add_data(language_key, d, data):
@@ -312,6 +312,6 @@ if __name__ == '__main__':
     data_dict = {k: v for k, v in sorted(data_dict.items(), key=lambda item: len(item[1]['incoder']) + len(item[1]['unixcoder']), reverse=True)}
     for k in data_dict.keys():
         print('---', k, '---')
-        classify_all_scores(data_dict[k])
+        classify_all_scores(data_dict[k], k)
 
     print('done')

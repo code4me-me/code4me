@@ -19,7 +19,20 @@ def compute_rouge(line: str, completion: str):
     }
 
 
-def tokenize_code(code):
+def compute(line: str, completion: str, l):
+    tokenized_line, tokenized_line_str = tokenize_code(line, l)
+    tokenized_completion, tokenized_completion_str = tokenize_code(completion, l)
+    return {
+        "bleu": sentence_bleu([tokenized_line], tokenized_completion, smoothing_function=SmoothingFunction().method2),
+        "exactMatch": float(line == completion),
+        "levenshtein": Levenshtein.ratio(line, completion),
+        "meteor": meteor_score(references=[tokenized_line], hypothesis=tokenized_completion),
+        "rouge": compute_rouge(tokenized_line_str, tokenized_completion_str),
+        "statisticTimestamp": datetime.now().isoformat()
+    }
+
+
+def tokenize_code_python(code):
     tokens = [
         x
         for x in re.split(
@@ -32,14 +45,31 @@ def tokenize_code(code):
     return tokens, " ".join(tokens)
 
 
-def compute(line: str, completion: str):
-    tokenized_line, tokenized_line_str = tokenize_code(line)
-    tokenized_completion, tokenized_completion_str = tokenize_code(completion)
-    return {
-        "bleu": sentence_bleu([tokenized_line], tokenized_completion, smoothing_function=SmoothingFunction().method2),
-        "exactMatch": float(line == completion),
-        "levenshtein": Levenshtein.ratio(line, completion),
-        "meteor": meteor_score(references=[tokenized_line], hypothesis=tokenized_completion),
-        "rouge": compute_rouge(tokenized_line_str, tokenized_completion_str),
-        "statisticTimestamp": datetime.now().isoformat()
-    }
+# TODO: add java tokenizer
+def tokenize_code_java(code):
+    return tokenize_code_python(code)
+
+
+# TODO: add javascript tokenizer
+def tokenize_code_javascript(code):
+    return tokenize_code_python(code)
+
+
+# TODO: add php tokenizer
+def tokenize_code_php(code):
+    return tokenize_code_python(code)
+
+
+tokenizer_dict = {
+    'python': tokenize_code_python,
+    'java': tokenize_code_java,
+    'javascript': tokenize_code_javascript,
+    'php': tokenize_code_php,
+}
+
+
+def tokenize_code(code, l):
+    try:
+        return tokenizer_dict[l](code)
+    except:
+        return tokenizer_dict['python'](code)
