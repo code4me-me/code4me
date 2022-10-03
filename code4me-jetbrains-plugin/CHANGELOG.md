@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Changed
+- Update build configurations
 
 ## [1.0.11]
 ### Changed
