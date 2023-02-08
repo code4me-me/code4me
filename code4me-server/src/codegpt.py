@@ -149,20 +149,23 @@ def DecodeIds(idxs):
     return codes.strip(" ")
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 break_ids = [tokenizer.sep_token_id]
 
 
 def codegpt_predict(left_context: str, right_context: str):
-    # preprocess
-    left_context = left_context.replace("\n", "<EOL>")
-    left_context = f"<s> {left_context}"
-
-    inputs = torch.tensor(tokenizer.encode(left_context)).unsqueeze(0).to(device)
+    input = input.replace("\n", "<EOL>")
+    block_size = 1024
+    predict_size = 64
+    tokens = tokenizer.encode(input)[-(block_size - predict_size - 1):]
+    # print tokens as strings
+    # prepend with <s>
+    tokens = [tokenizer.bos_token_id] + tokens
+    inputs = torch.tensor(tokens).unsqueeze(0).to(device)
     with torch.no_grad():
-        beam_size = 5
+        beam_size = 3
         m = torch.nn.LogSoftmax(dim=-1)
         outputs = model(inputs[:, :-1])[1]
         p = []
@@ -195,7 +198,7 @@ def codegpt_predict(left_context: str, right_context: str):
             if 0 in t:
                 t = t[:t.index(0)]
             text = DecodeIds(t).strip("<EOL>").strip()
-            # post process
             text = text.replace("<EOL>", "\n")
             return text
+    return ""
 
