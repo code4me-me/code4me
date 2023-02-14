@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-## [valueof(GradlePropertyValueSource)] - 2023-02-14
+## [1.0.13] - 2023-02-14
 
 ### Changed
 - Update dependencies for new jetbrains release
