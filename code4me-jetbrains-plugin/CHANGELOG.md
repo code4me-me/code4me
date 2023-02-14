@@ -3,6 +3,8 @@
 # Code4Me Changelog
 
 ## [Unreleased]
+### Changed
+- Update dependencies for new jetbrains release
 
 ## [1.0.12]
 ### Changed
