@@ -49,10 +49,7 @@ def autocomplete():
     unique_predictions_set = set()
 
     def predict_model(model: Model) -> List[str]:
-        start_time = time.time()
-        res = model.value[1](left_context, right_context)
-        print(f"Model {model.name} took {time.time() - start_time} seconds", flush=True)
-        return res
+        return model.value[1](left_context, right_context)
 
     results = Parallel(n_jobs=os.cpu_count(), prefer="threads")(delayed(predict_model)(model) for model in Model)
     for model, model_predictions in zip(Model, results):
