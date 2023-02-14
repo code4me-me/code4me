@@ -60,6 +60,7 @@ jobs:
         with:
           distribution: zulu
           java-version: 11
+          cache: gradle
 
       # Set environment variables
       - name: Export Properties
@@ -98,7 +99,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ steps.properties.outputs.pluginVerifierHomeDir }}/ides
-          key: ${{ format('plugin-verifier-{0}', hashFiles(format('{0}/build/listProductsReleases.txt', env.WORKING_DIRECTORY))) }}
+          key: ${{ format('plugin-verifier-{0}-{1}', hashFiles(format('{0}/build/listProductsReleases.txt', env.WORKING_DIRECTORY)), vars.CACHE_KEY) }}
 
       # Run Verify Plugin task and IntelliJ Plugin Verifier tool
       - name: Run Plugin Verification tasks

@@ -7,6 +7,8 @@
 
     <depends>com.intellij.modules.platform</depends>
 
+    <resource-bundle>messages.Code4MeBundle</resource-bundle>
+
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeApiService"/>
         <projectService serviceImplementation="me.code4me.plugin.services.Code4MeDocumentListenerService"/>
