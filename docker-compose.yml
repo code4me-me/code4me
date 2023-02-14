@@ -31,8 +31,13 @@ services:
       - ./code4me-server/markdowns:/codeforme/markdowns
       - ./code4me-server/templates:/codeforme/templates
       - ./code4me-server/static:/codeforme/static
+      - ./codegpt_checkpoint:/codeforme/codegpt_checkpoint
     expose:
       - 3000
     environment:
       - CODE4ME_CUDA=True
       - "SURVEY_LINK=https://docs.google.com/forms/d/1uES5o6etbWEZVNpUc0TGisDJXIIuj5hIwa9tF7_FQuw/?entry.1566855902={user_id}"
+      - CODEGPT_CHECKPOINT_PATH=/codeforme/codegpt_checkpoint
+      - UNIXCODER_DEVICE=cuda:0
+      - INCODER_DEVICE=cuda:0
+      - CODEGPT_DEVICE=cuda:1

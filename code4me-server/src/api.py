@@ -3,9 +3,11 @@ import json
 import os
 import uuid
 import random
+from typing import List
+import time
 from model import Model
 from datetime import datetime
-
+from joblib import Parallel, delayed
 from flask import Blueprint, request, Response, redirect
 
 from limiter import limiter
@@ -45,8 +47,15 @@ def autocomplete():
     t_before = datetime.now()
     predictions = {}
     unique_predictions_set = set()
-    for model in Model:
-        model_predictions = model.value[1](left_context, right_context)
+
+    def predict_model(model: Model) -> List[str]:
+        start_time = time.time()
+        res = model.value[1](left_context, right_context)
+        print(f"Model {model.name} took {time.time() - start_time} seconds", flush=True)
+        return res
+
+    results = Parallel(n_jobs=os.cpu_count(), prefer="threads")(delayed(predict_model)(model) for model in Model)
+    for model, model_predictions in zip(Model, results):
         predictions[model.name] = model_predictions
         unique_predictions_set.update(model_predictions)
 

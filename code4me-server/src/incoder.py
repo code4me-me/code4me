@@ -7,11 +7,16 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteriaLi
 
 model_name = "facebook/incoder-1B"
 model = AutoModelForCausalLM.from_pretrained(model_name)
+
+device_name = os.environ.get("INCODER_DEVICE", "cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(device_name)
+model.to(device)
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 CUDA = os.getenv("CODE4ME_CUDA", "False") == "True"
 if CUDA:
-    model = model.half().cuda()
+    model = model.half()
 
 # signals the start of a document
 BOS = "<|endoftext|>"
@@ -53,8 +58,8 @@ def decode(tokens):
 
 
 def generate(left_context: str, right_context: str):
-    left_context_tokenised = tokenizer(left_context, return_tensors="pt").input_ids[0]
-    right_context_tokenised = tokenizer(right_context, return_tensors="pt").input_ids[0]
+    left_context_tokenised = tokenizer(left_context, return_tensors="pt").to(device).input_ids[0]
+    right_context_tokenised = tokenizer(right_context, return_tensors="pt").to(device).input_ids[0]
 
     left_context = decode(util.truncate_left_context(
         left_context_tokenised,
@@ -69,7 +74,7 @@ def generate(left_context: str, right_context: str):
     prompt = left_context + make_sentinel(0) + right_context + EOF + make_sentinel(1) + make_sentinel(0)
     tokens = tokenizer(prompt, return_tensors="pt")
     if CUDA:
-        tokens = tokens.to("cuda")
+        tokens = tokens.to(device)
     token_count = len(tokens.input_ids[0])
 
     stopping_criteria = StoppingCriteriaList()
