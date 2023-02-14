@@ -1,7 +1,7 @@
 Flask~=2.2.2
 Flask-Limiter~=3.1.0
 torch~=1.13.1
-transformers~=4.26.1
+transformers~=4.21.0
 rouge-score~=0.1.2
 Levenshtein~=0.20.9
 nltk~=3.8.1
