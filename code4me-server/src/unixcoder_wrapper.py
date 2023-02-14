@@ -1,9 +1,11 @@
 from typing import List
+import os
 
 import torch
 from unixcoder import UniXcoder
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device_name = os.environ.get("UNIXCODER_DEVICE", "cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(device_name)
 model = UniXcoder("microsoft/unixcoder-base")
 model.to(device)
 

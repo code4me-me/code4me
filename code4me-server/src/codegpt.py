@@ -1,17 +1,21 @@
+from typing import List
 from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer
 import os
 import torch
 
-checkpoint_path = "./codegpt_checkpoint"  # this is currently the checkpoint for step 510.000
-checkpoint_path = os.path.join(os.path.dirname(__file__), checkpoint_path)
+checkpoint_path = "gpt2"  # default checkpoint is the non-finetuned gpt2 model
+
+# if CODEGPT_CHECKPOINT_PATH is set, use that checkpoint
+if os.environ.get("CODEGPT_CHECKPOINT_PATH"):
+    checkpoint_path = os.environ.get("CODEGPT_CHECKPOINT_PATH")
 
 if not os.path.exists(checkpoint_path):
-    raise ValueError("Checkpoint not found")
+    raise ValueError(f"Invalid checkpoint path: '{checkpoint_path}'")
 
 config = GPT2Config
 tokenizer = GPT2Tokenizer.from_pretrained(checkpoint_path, do_lower_case=False, sep_token='<EOL>',
-                                            bos_token='<s>', eos_token='</s>', pad_token='<pad>',
-                                            unk_token='<|UNKNOWN|>')
+                                          bos_token='<s>', eos_token='</s>', pad_token='<pad>',
+                                          unk_token='<|UNKNOWN|>')
 model = GPT2LMHeadModel.from_pretrained(checkpoint_path)
 model.resize_token_embeddings(len(tokenizer))
 
@@ -21,12 +25,12 @@ class Beam(object):
         self.size = size
         self.tt = torch.cuda
         # The score for each translation on the beam.
-        self.scores = self.tt.FloatTensor(size).zero_()
+        self.scores = self.tt.FloatTensor(size).zero_().to(device)
         # The backpointers at each time-step.
         self.prevKs = []
         # The outputs at each time-step.
         self.nextYs = [self.tt.LongTensor(size)
-                       .fill_(0)]
+                       .fill_(0).to(device)]
         self.nextYs[0][:] = sos
         # Has EOS topped the beam yet.
         self._eos = eos
@@ -74,7 +78,7 @@ class Beam(object):
 
         # bestScoresId is flattened beam x word array, so calculate which
         # word and beam each score came from
-        prevK = bestScoresId // numWords
+        prevK = torch.div(bestScoresId, numWords, rounding_mode='trunc')
         self.prevKs.append(prevK)
         self.nextYs.append((bestScoresId - prevK * numWords))
 
@@ -133,15 +137,14 @@ def DecodeIds(idxs):
     codes = ""
     for idx in idxs:
         to_add = tokenizer.convert_ids_to_tokens(idx)
-        if tokenizer.convert_ids_to_tokens(idx)[0] == '\u0120':
+        if to_add[0] == '\u0120':
             if not codes.endswith(" "):
                 codes += " " + to_add[1:]
             else:
                 codes += to_add[1:]
         elif (
                 idx in [tokenizer.bos_token_id, tokenizer.eos_token_id, tokenizer.sep_token_id,
-                        tokenizer.pad_token_id] or
-                tokenizer.convert_ids_to_tokens(idx).startswith("<NUM_LIT")
+                        tokenizer.pad_token_id]
         ):
             codes += " " + to_add + " "
         else:
@@ -149,34 +152,42 @@ def DecodeIds(idxs):
     return codes.strip(" ")
 
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device_name = os.environ.get("CODEGPT_DEVICE", "cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(device_name)
 model.to(device)
 model.eval()
 break_ids = [tokenizer.sep_token_id]
 
+m = torch.nn.LogSoftmax(dim=-1).to(device)
+zero = torch.cuda.LongTensor(1).fill_(0).to(device)
 
-def codegpt_predict(left_context: str, right_context: str):
-    input = input.replace("\n", "<EOL>")
-    block_size = 1024
+def codegpt_predict(left_context: str, right_context: str) -> List[str]:
+    left_context = left_context.replace("\n", "<EOL>")
+    input_size = 960
     predict_size = 64
-    tokens = tokenizer.encode(input)[-(block_size - predict_size - 1):]
+    block_size = input_size + predict_size
+
+    # pre-truncate to ensure we do not tokenize too much (takes too long)
+    avg_chars_per_token = 4.26
+    avg_chars_per_token += 1  # add some margin to be safe
+    input = left_context[-int(input_size * avg_chars_per_token):]
+
+    tokens = tokenizer.encode(input)[-(input_size - 1):]
     # print tokens as strings
     # prepend with <s>
     tokens = [tokenizer.bos_token_id] + tokens
-    inputs = torch.tensor(tokens).unsqueeze(0).to(device)
+    inputs = torch.tensor(tokens, device=device).unsqueeze(0)
     with torch.no_grad():
-        beam_size = 3
-        m = torch.nn.LogSoftmax(dim=-1)
+        beam_size = 1
         outputs = model(inputs[:, :-1])[1]
         p = []
-        zero = torch.cuda.LongTensor(1).fill_(0)
         for i in range(inputs.shape[0]):
             past = [torch.cat([x[0].unsqueeze(0), x[1].unsqueeze(0)], dim=0) if type(x) == tuple else x for x in
                     outputs]
             past_hidden = [x[:, i:i + 1].expand(-1, beam_size, -1, -1, -1) for x in past]
-            beam = Beam(beam_size, inputs[i][-1].cpu().data, break_ids)
+            beam = Beam(beam_size, inputs[i][-1].data, break_ids)
             input_ids = None
-            for _ in range(100):
+            for _ in range(predict_size):
                 if beam.done():
                     break
                 input_ids = beam.getCurrentState()
@@ -197,8 +208,10 @@ def codegpt_predict(left_context: str, right_context: str):
             t = t.tolist()
             if 0 in t:
                 t = t[:t.index(0)]
-            text = DecodeIds(t).strip("<EOL>").strip()
-            text = text.replace("<EOL>", "\n")
-            return text
-    return ""
-
+            if tokenizer.eos_token_id in t:
+                t = t[:t.index(tokenizer.eos_token_id)]
+            if tokenizer.sep_token_id in t:
+                t = t[:t.index(tokenizer.sep_token_id)]
+            text = DecodeIds(t).strip()
+            return [text]
+    return []
