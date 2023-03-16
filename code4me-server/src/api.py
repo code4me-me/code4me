@@ -40,7 +40,8 @@ def autocomplete():
     if res is not None:
         return res
 
-    left_context = values["leftContext"]
+    # remove trailing whitespace from left context - tokens usually include a leading space, so this should improve accuracy
+    left_context = (values["leftContext"] or "").rstrip()
     right_context = values["rightContext"]
     store_context = values.get("storeContext", False) is True
 
