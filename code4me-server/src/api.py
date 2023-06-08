@@ -9,6 +9,7 @@ from model import Model
 from datetime import datetime
 from joblib import Parallel, delayed
 from flask import Blueprint, request, Response, redirect
+import torch
 
 from limiter import limiter
 
@@ -50,7 +51,10 @@ def autocomplete():
     unique_predictions_set = set()
 
     def predict_model(model: Model) -> List[str]:
-        return model.value[1](left_context, right_context)
+        try:
+            return model.value[1](left_context, right_context)
+        except torch.cuda.OutOfMemoryError:
+            exit(1)
 
     results = Parallel(n_jobs=os.cpu_count(), prefer="threads")(delayed(predict_model)(model) for model in Model)
     for model, model_predictions in zip(Model, results):
