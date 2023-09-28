@@ -4,7 +4,10 @@
 
 ## [Unreleased]
 
-## [1.0.13] - 2023-02-14
+### Changed
+- Update version for new jetbrains release
+
+## [1.0.13]
 
 ### Changed
 - Update dependencies for new jetbrains release
