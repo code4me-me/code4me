@@ -42,7 +42,8 @@ def autocomplete():
         return res
 
     # remove trailing whitespace from left context - tokens usually include a leading space, so this should improve accuracy
-    left_context = (values["leftContext"] or "").rstrip()
+    left_context = values["leftContext"] or ""
+    stripped_left_context = left_context.rstrip()
     right_context = values["rightContext"]
     store_context = values.get("storeContext", False) is True
 
@@ -52,7 +53,7 @@ def autocomplete():
 
     def predict_model(model: Model) -> List[str]:
         try:
-            return model.value[1](left_context, right_context)
+            return model.value[1](stripped_left_context, right_context)
         except torch.cuda.OutOfMemoryError:
             exit(1)
 
