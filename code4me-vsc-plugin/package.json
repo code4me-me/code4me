@@ -34,6 +34,18 @@
 			{
 				"command": "code4me.helloWorld",
 				"title": "Hello World" 
+			}, 
+			{
+				"command": "code4me.action.triggerSuggest",
+				"title": "Trigger Suggest (code4me)"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "code4me.action.triggerSuggest",
+				"key": "ctrl+space",
+				"mac": "ctrl+space",
+				"when": "editorTextFocus && !suggestWidgetVisible"
 			}
 		],
 		"configuration": {
