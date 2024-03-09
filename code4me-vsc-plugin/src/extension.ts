@@ -88,7 +88,8 @@ async function createCompletionItemProvider(
   disposables.push(
     vscode.languages.registerCompletionItemProvider(
       languageFilters, new CompletionItemProvider(uuid, config), ...allowedTriggerCharacters
-    )
+    ), 
+    vscode.commands.registerCommand('verifyInsertion', verifyInsertion)
   )
 
   return { dispose: () => { disposables.forEach(d => d.dispose()) } }
@@ -367,9 +368,8 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     if (response.survey && promptSurvey) doPromptSurvey(this.uuid, this.config);
 
     const completionToken: string = response.verifyToken;
-    const command: NodeJS.Timeout = verifyInsertion(position, null, completionToken, this.uuid, null);
     const completionItems :vscode.CompletionItem[] = response.predictions.map((prediction: string) => {
-      return createCompletionItem(prediction, position, document, completionToken, this.uuid, command)
+      return createCompletionItem(prediction, position, document, completionToken, this.uuid)
     })
 
     return new vscode.CompletionList(completionItems, false)
@@ -383,7 +383,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 
 function createCompletionItem(
   prediction: string, position: vscode.Position, document: vscode.TextDocument, 
-  completionToken: string, code4MeUuid: string, timer: NodeJS.Timeout | null
+  completionToken: string, uuid: string
 ): vscode.CompletionItem
 {
   // We filter them out earlier in callCompletionsAPI, to have more type-safe logic 
@@ -419,13 +419,14 @@ function createCompletionItem(
   item.command = {
     command: 'verifyInsertion',
     title: 'Verify Insertion',
-    arguments: [position, prediction, completionToken, code4MeUuid, timer]
+    arguments: [position, prediction, completionToken, uuid]
   };
   return item;
 }
 
-function verifyInsertion(position: vscode.Position, completion: string | null, completionToken: string, apiKey: string, timer: NodeJS.Timeout | null) {
-  if (timer !== null) clearTimeout(timer);
+function verifyInsertion(position: vscode.Position, completion: string | null, completionToken: string, apiKey: string) {
+  console.log('verifyInsertion called for completion: ', completion, ' at position: ', position, ' with token: ', completionToken, ' and apiKey: ', apiKey)
+  // if (timer !== null) clearTimeout(timer);
   const editor = vscode.window.activeTextEditor;
   const document = editor!.document;
   const documentName = document.fileName;
@@ -471,8 +472,7 @@ function verifyInsertion(position: vscode.Position, completion: string | null, c
     }
   });
 
-
-  return timer = setTimeout(async () => {
+  return setTimeout(async () => {
     listener.dispose();
     const lineText = editor?.document.lineAt(lineNumber).text;
     const response = await fetch("https://code4me.me/api/v1/prediction/verify", {
