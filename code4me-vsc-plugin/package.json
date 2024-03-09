@@ -26,10 +26,16 @@
 		"vscode": "^1.47.0"
 	},
 	"activationEvents": [
-		"*"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"commands": [
+			{
+				"command": "code4me.helloWorld",
+				"title": "Hello World" 
+			}
+		],
 		"configuration": {
 			"title": "Code4Me",
 			"properties": {

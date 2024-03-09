@@ -1,16 +1,42 @@
+// {
+// 	"version": "2.0.0",
+// 	"tasks": [
+// 		{
+// 			"type": "npm",
+// 			"script": "compile",
+// 			"group": {
+// 				"kind": "build",
+// 				"isDefault": true
+// 			},
+// 			"problemMatcher": [],
+// 			"label": "npm: compile",
+// 			"detail": "tsc -p ./"
+// 		}
+// 	]
+// }
+
+// NOTE: Not sure how the above came about. 
+// It prevents the plugin from hot-reloading when developing. 
+// The below is the correct configuration for the tasks.json file according to vscode themselves. 
+// Specifically, `"script": "compile"` should be `"script": "watch"` to, you guessed it, watch for changes!
+
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
 {
 	"version": "2.0.0",
 	"tasks": [
 		{
 			"type": "npm",
-			"script": "compile",
+			"script": "watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			},
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			},
-			"problemMatcher": [],
-			"label": "npm: compile",
-			"detail": "tsc -p ./"
+			}
 		}
 	]
 }
