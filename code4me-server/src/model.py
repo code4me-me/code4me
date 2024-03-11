@@ -15,3 +15,11 @@ class Model(Enum):
                 if item.value[0] == value:
                     return item
         return super()._missing_(value)
+
+
+class Models(Enum):
+    ''' New model enum because I don't want to keep track of indices in my user study - Aral '''
+
+    InCoder     = incoder.generate 
+    UniXCoder   = unixcoder_wrapper.generate
+    CodeGPT     = codegpt.codegpt_predict
