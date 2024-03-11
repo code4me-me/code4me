@@ -1,7 +1,25 @@
+import os 
 from enum import Enum
-import incoder
-import unixcoder_wrapper
-import codegpt
+
+# TODO: (revert) remove up to `else:`
+if os.getenv("CODE4ME_TEST", "false") == "true":
+    print('''
+        \033[1m WARNING: RUNNING IN TEST MODE \033[0m
+          ''')
+    # if the env variable TEST_MODE is set to True, then remap model.generate to lambda: 'model_name'
+
+    incoder = type("InCoder", (object,), {})
+    unixcoder_wrapper = type("UniXCoder", (object,), {})
+    codegpt = type("CodeGPT", (object,), {})
+
+    incoder.generate = lambda left, right: "incoder"
+    unixcoder_wrapper.generate = lambda left, right: "unixcoder"
+    codegpt.codegpt_predict = lambda left, right: "codegpt"
+else: 
+    # ooh yeah, import statements in an else stmt; i see new things every day 
+    import incoder
+    import unixcoder_wrapper
+    import codegpt
 
 class Model(Enum):
     InCoder = (0, incoder.generate)
