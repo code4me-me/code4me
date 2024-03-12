@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import rand from 'csprng';
 import fetch, { Response } from 'node-fetch';
 import * as path from 'path';
+import { clear } from 'console';
 
 // After how many ms the completion is manually triggered if the user is idle. 
 const IDLE_TRIGGER_DELAY_MS = 3000; 
@@ -30,6 +31,15 @@ const SURVEY_WINDOW_SURVEY = "Survey";
 const AVG_TOKEN_LENGTH_IN_CHARS = 7984;
 
 const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
+const CODE4ME_VERSION = vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
+
+// TODO: (revert) for testing purposes
+const AUTOCOMPLETE_URL = 'http://127.0.0.1:5000/api/v2/prediction/autocomplete'
+const VERIFY_URL = 'http://127.0.0.1:5000/api/v2/prediction/autocomplete'
+
+// const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
+// const VERIFY_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
+
 
 // const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 
@@ -49,6 +59,12 @@ let responseflakiness = true;  // for testing, check what happens if responses a
 // Like, what the hell does the T in TS even stand for?
 type TriggerType = 'manual' | 'idle' | 'auto' // auto refers to the default value here.
 
+// Datatype for the response received from the API 
+type CompletionResponse = {
+  predictions: Record<string, string>,
+  verifyToken: string, 
+  survey: boolean
+}
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -117,8 +133,7 @@ async function createCompletionItemProvider(
     // This is the only way I could figure out how to check for manual triggers. 
     // Override the keybind for vscode.actions.triggerSuggest (see package.json > keybinds)
     // As a result, vscode triggerSuggest is not called (still exists in the command palette)
-    // Then, we can modify the completionItemProvider.manual property to true, 
-    // and then execute the built-in triggerSuggest command
+    // Then, we can modify the completionItemProvider.manual property to true, and call triggerSuggest.
     vscode.commands.registerCommand('code4me.action.triggerSuggest', () => {
       completionItemProvider.trigger = 'manual'; 
       vscode.commands.executeCommand('editor.action.triggerSuggest')
@@ -139,6 +154,10 @@ async function createCompletionItemProvider(
 // Honestly, I'm biased but would strongly consider using this instead 
 // of the previous code, as I fixed a few serious bugs  
 
+// However, I realise that some of the debounce and timer code may look messy. 
+// Honestly, I don't know why half of it works, but it seems to do exactly what I expect
+// when I test it. 
+
 /** Completion Item Provider, impl 2 methods: 
  * 1. provideCompletionItems: generates a list of completions
  * 2. resolveCompletionItems: used in case the list is incomplete (i.e. lazy loading), not used here. 
@@ -152,10 +171,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 
   trigger: TriggerType = 'auto'
   idleTimer: NodeJS.Timeout | undefined = undefined // triggered after the user is idle for a while
-  autoTimer: NodeJS.Timeout | undefined = undefined // Debounce automatic requests
-
-  predictionCache: vscode.CompletionList = new vscode.CompletionList([], true)
-
+  predictionCache: vscode.CompletionList = new vscode.CompletionList([], false)
 
   /** Interface method for providing a (optionally preliminary) set of completions */
   async provideCompletionItems(
@@ -165,34 +181,47 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     context: vscode.CompletionContext
   ): Promise<vscode.CompletionList>
   {
+    clearTimeout(this.idleTimer)
     // And, behold, why switch statements are actually not that great 
     switch (this.trigger) {
 
       // Timeout invocations will already have called the completion API, so we return the cache
       case 'idle':
         this.trigger = 'auto'
-        clearTimeout(this.idleTimer) // not really necessary here, but will fail silently 
         return this.predictionCache 
 
-      // Manual invocations always call the API, with a leading debounce 
+      // Manual invocations always call the API. 
+      // No need to debounce these thanks to the IntelliSense UI (user cannot spam)
       case 'manual':  
         this.trigger = 'auto'
-        clearTimeout(this.idleTimer)
-        return this.callPredictionsAPI(document, position, 'manual')
+        return this.getPredictions(document, position, 'manual')
 
       // Automatic invocations have a trailing debounce 
-      // (i.e. call once the user stops typing x ms)
       default: 
-      // These five lines took me a day to write 
-        return await new Promise(resolve => {
-          clearTimeout(this.autoTimer)
-          this.autoTimer = setTimeout(async () => {
-            this.predictionCache = await this.callPredictionsAPI(document, position, 'auto')
-            clearTimeout(this.idleTimer)
-            resolve(this.predictionCache)
-          }, AUTO_DEBOUNCE_DELAY_MS)
-        })
+        // return this.predictionCache 
+        return this.debounce((bool: Boolean) => {
+          return bool ? this.getPredictions(document, position, 'auto') : this.predictionCache
+        }, AUTO_DEBOUNCE_DELAY_MS)
     }
+  }
+
+  // Debounce auto predictions (triggered at every keystroke and more events)
+  useCache: Function = () => {} 
+  timer: NodeJS.Timeout | undefined = undefined
+
+  async debounce(cb: Function, delay: number): Promise<Promise<vscode.CompletionList>> {
+    console.log('debouncing')
+    clearTimeout(this.timer)
+    this.useCache() 
+    return new Promise((resolve, reject) => {
+      this.useCache = () => {
+        resolve(cb(false))
+      }
+      this.timer = setTimeout(() => {
+        resolve(cb(true))
+        clearTimeout(this.idleTimer)
+      }, delay)}
+    )
   }
 
   /** Interface method for updating completion items with additional information  */
@@ -202,6 +231,8 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   
   /** Automatically invoke triggerSuggest if user is idle for `IDLE_TRIGGER_DELAY_MS` */
   async setIdleTrigger() {
+    this.useCache() // I hate that I have to put this here but somehow it fixes the debounce 
+    // clearTimeout(this.timer)
     if (this.idleTimer !== null) clearTimeout(this.idleTimer)
     this.idleTimer = setTimeout(async () => {
       
@@ -217,76 +248,83 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
    * Returns true if predictions were received and cached; false otherwise.
    */
   async cachePredictions(trigger: TriggerType): Promise<boolean> {
+
     const document = vscode.window.activeTextEditor?.document
     if (!document) return false
     const position = vscode.window.activeTextEditor?.selection.active
     if (!position) return false
 
-    const completionList = await this.callPredictionsAPI(document, position, trigger)
+    const completionList = await this.getPredictions(document, position, trigger)
     if (completionList.items.length === 0) return false
 
     this.predictionCache = completionList
     return true 
   }
 
-  /** Call the predictions API for code completions. 
+  /** Call the predictions API for code completions and store in cache.  
    * You need to be careful to not call this method unnecessarily, as API calls are rate-limited.
    * @param document the document the completion was invoked
    * @param position the position of the cursor
    */
-  private async callPredictionsAPI(
+  private async getPredictions(
     document: vscode.TextDocument,
     position: vscode.Position,
     trigger: TriggerType,
   ): Promise<vscode.CompletionList> {
     
-    // Wait for 200ms to simulate a slow API call
-    await new Promise(resolve => setTimeout(resolve, 200))
+    const response = await this.callCompletionsAPI(document, position, trigger)
+    if (!response) return this.predictionCache
 
-    responseflakiness = !responseflakiness
-    console.log(trigger, 'call to completions API', responseflakiness? 'stable' : 'flaky')
+    // response.predictions is Record<string, string>. 
+    // filter out empty predictions (second element in tuple)
+    const predictions = Object.entries(response.predictions).filter(([_, value]) => value !== '')
+    const verifyToken = response.verifyToken
+    const survey = response.survey
 
-    let predictions: Array<string> = (responseflakiness) ? ['pred_new', 'pred_new_2', 'pred_old'] : []
-    let verifyToken: string = (responseflakiness) ? 'verifyToken' : ''
-    let survey: boolean = (responseflakiness) ? true : false
-
-    predictions = predictions.filter((prediction: string) => prediction !== "");
-
-    const completionItems :vscode.CompletionItem[] = predictions.map((prediction: string) => {
-      return this.createCompletionItem(prediction, position, document, verifyToken)
+    // console.log('received predictions:', predictions.length, 'items', Object.values(predictions))
+    if (Object.values(predictions).length === 0) return this.predictionCache
+    
+    const completionItems = predictions.map(prediction => {
+      return this.createCompletionItem(prediction, document, position, verifyToken)
     })
 
-    if (predictions.length === 0) return this.predictionCache
-    this.predictionCache = new vscode.CompletionList(completionItems, false)
+    if (survey && this.config.get('promptSurvey')) {
+      doPromptSurvey(this.uuid, this.config)
+    }
 
+    this.predictionCache = new vscode.CompletionList(completionItems, true)
+    // console.log('cached predictions:', this.predictionCache.items.length, 'items')
     return this.predictionCache
   }
 
   private createCompletionItem(
-    prediction: string, position: vscode.Position, document: vscode.TextDocument, 
+    prediction: [string, string], 
+    document: vscode.TextDocument, 
+    position: vscode.Position, 
     verifyToken: string
   ): vscode.CompletionItem
   {
+    const [model, completion] = prediction
     const item = new vscode.CompletionItem(
-      prediction, 
+      completion, 
       vscode.CompletionItemKind.EnumMember // I chose this because it's less common than 'Property' 
     )
-    item.insertText = prediction  // No longer necessary as 'detail' now contains the logo
-    item.filterText = prediction  // The culprit of why suggestions were ranked at the bottom
+    item.insertText = completion  // No longer necessary as 'detail' now contains the logo
+    item.filterText = completion  // The culprit of why suggestions were ranked at the bottom
     item.sortText = '0' // Force sort at the top always (when compared with other identical prefixes)
     item.detail = '\u276E\uff0f\u276f' // Logo 
   
     // TODO: in the future, it could be nice to show to users which model generated 
     // this suggestion. And, maybe even summarise with another LLM
-    item.documentation = 'Code4Me Completion' 
+    item.documentation = 'Completion from ' + model
   
     const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
     const positionPlusOne = new vscode.Position(position.line, position.character + 1);
     const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
     const characterAfterCursor = charactersAfterCursor.charAt(0);
   
-    const lastTwoCharacterOfPrediction = prediction.slice(-2);
-    const lastCharacterOfPrediction = prediction.slice(-1);
+    const lastTwoCharacterOfPrediction = completion.slice(-2);
+    const lastCharacterOfPrediction = completion.slice(-1);
   
     if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');' || lastTwoCharacterOfPrediction === '),') {
       item.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
@@ -301,13 +339,62 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     };
     return item;
   }
+
+  private async callCompletionsAPI(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    trigger: TriggerType
+  ): Promise<CompletionResponse | undefined>
+  {
+    const [prefix, suffix] = splitTextAtCursor(document, position)
+    const storeContext = this.config.get('storeContext')
+    const languageId = document.languageId
+
+    const body = {
+      'prefix': prefix,
+      'suffix': suffix,
+      'trigger': trigger,
+      'language': languageId, 
+      'ide': 'vsc',
+      'version': CODE4ME_VERSION,
+      'store': storeContext,
+    }
+
+    console.log(trigger, 'call to completions API')
+
+    try {
+      const response = await fetch(AUTOCOMPLETE_URL, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: {
+          'Content-Type': 'application/json', 
+          'Authorization': 'Bearer ' + this.uuid
+        }
+      });
+
+      if (response.status === 429) {
+        showMaxRequestWindow('You have exceeded the limit of 4000 suggestions per hour.')
+      }
+
+      const data = await response.json();
+
+      // Create a CompletionResponse object from data, throw error if not possible 
+      return (!data.predictions) ? 
+        undefined : data as CompletionResponse
+    }
+    catch (e) {
+      console.error("Unexpected error: ", e);
+      showErrorWindow("Unexpected error: " + e);
+      return undefined;
+    }
+  }
 }
 
 /**
    * Calls verification API after a 30s timeout with the completion and the ground truth.
    * TODO: this implementation is incorrect. (also the lack of documentation does not help at all for tracking lines)
    * MVE: call completion on line 3, then delete line 3. The resulting `lineNumber` is 1 somehow. 
-   * @param prediction prediction for which this callback is created
+   * @param completion prediction for which this callback is created
    * @param position position of the completion
    * @param document the prediction is in 
    * @param verifyToken query UUID 
@@ -315,17 +402,19 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
    * @returns 
    */
 function verifyInsertion(
-  prediction: string, 
+  prediction: [string, string], 
   position: vscode.Position, 
   document: vscode.TextDocument,
   verifyToken: string,
   uuid: string, 
   callback: () => void,
 ) {
-  console.log('accepted completion: ', prediction, ' at position: ', position)
   // We clear the idle Timeout as accepting a completion counts as an interaction. 
   // But, we probably don't want to generate new completions instantly. 
   callback() 
+
+  const [model, completion] = prediction
+  console.log('accepted completion:', completion, 'by model', model, 'at position:', position)
 
   const documentName = document.fileName;
   let lineNumber = position.line;
@@ -379,12 +468,12 @@ function verifyInsertion(
       document.lineAt(lineNumber).text?.substring(characterOffset).trim() : null;
     
     console.log(uuid, 'sending ground-truth: ', groundTruth, 'at line', lineNumber, ' and characterOffset: ', characterOffset)
-    const response = await fetch("https://code4me.me/api/v1/prediction/verify", {
+    const response = await fetch(VERIFY_URL, {
       method: 'POST',
       body: JSON.stringify(
         {
           "verifyToken": verifyToken,
-          "chosenPrediction": prediction,
+          "chosenModel": model,
           "groundTruth": groundTruth, 
         }
       ),
@@ -510,17 +599,15 @@ function splitTextAtCursor(
 }
 
 // async function callToAPIAndRetrieve(document: vscode.TextDocument, position: vscode.Position, code4MeUuid: string, triggerKind: vscode.CompletionTriggerKind): Promise<any | undefined> {
-//   const textArray = splitTextAtCursor(document, position);
-//   const triggerPoint = determineTriggerCharacter(document, position, triggerKind);
-//   if (triggerPoint === undefined) return undefined;
-//   const textLeft = textArray[0];
-//   const textRight = textArray[1];
+//   const [prefix, suffix] = splitTextAtCursor(document, position);
+//   // const triggerPoint = determineTriggerCharacter(document, position, triggerKind);
+//   // if (triggerPoint === undefined) return undefined;
 
 //   const configuration = vscode.workspace.getConfiguration('code4me', undefined);
+
   
 //   try {
-//     const url = "https://code4me.me/api/v1/prediction/autocomplete";
-//     const response = await fetch(url, {
+//     const response = await fetch(AUTOCOMPLETE_URL, {
 //       method: "POST",
 //       body: JSON.stringify(
 //         {
@@ -621,68 +708,3 @@ function doPromptSurvey(uuid: string, config: vscode.WorkspaceConfiguration) {
     }
   });
 }
-
-// export function activate(extensionContext: ExtensionContext) {
-//   if (!extensionContext.globalState.get('code4me-uuid')) {
-//     extensionContext.globalState.update('code4me-uuid', rand(128, 16));
-//   }
-
-//   if (configuration.get('promptDataStorage')) doPromptDataStorageMenu();
-
-//   const code4MeUuid: string = extensionContext.globalState.get('code4me-uuid')!;
-
-//   extensionContext.subscriptions.push(vscode.commands.registerCommand('verifyInsertion', verifyInsertion));
-//   extensionContext.subscriptions.push(
-//     vscode.languages.registerCompletionItemProvider({ pattern: '**' }, 
-//     {
-//       async provideCompletionItems(document, position, token, context) {
-//         const jsonResponse = await callToAPIAndRetrieve(document, position, code4MeUuid, context.triggerKind);
-//         if (!jsonResponse) return undefined;
-
-//         const listPredictionItems = jsonResponse.predictions;
-
-//         if (listPredictionItems.length == 0) return undefined;
-//         const completionToken = jsonResponse.verifyToken;
-
-//         const promptSurvey = configuration.get("code4me.promptSurvey");
-//         if (jsonResponse.survey && promptSurvey) doPromptSurvey(code4MeUuid);
-
-
-//         const timer = verifyInsertion(position, null, completionToken, code4MeUuid, null);
-//         return listPredictionItems.map((prediction: string) => {
-//           const completionItem = new vscode.CompletionItem('\u276E\uff0f\u276f: ' + prediction);
-//           completionItem.sortText = '0.0000';
-//           if (prediction == "") return undefined;
-//           completionItem.insertText = prediction;
-
-//           const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
-//           const positionPlusOne = new vscode.Position(position.line, position.character + 1);
-//           const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
-//           const characterAfterCursor = charactersAfterCursor.charAt(0);
-
-//           const lastTwoCharacterOfPrediction = prediction.slice(-2);
-//           const lastCharacterOfPrediction = prediction.slice(-1);
-
-//           if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');' || lastTwoCharacterOfPrediction === '),') {
-//             completionItem.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
-//           } else if (characterAfterCursor === lastCharacterOfPrediction) {
-//             completionItem.range = new vscode.Range(position, positionPlusOne);
-//           }
-
-//           completionItem.command = {
-//             command: 'verifyInsertion',
-//             title: 'Verify Insertion',
-//             arguments: [position, prediction, completionToken, code4MeUuid, timer]
-//           };
-//           return completionItem;
-//         });
-//       }
-//     }, 
-//     ' ', '.', '+', '-', '*', '/', '%', '*', '<', '>', '&', '|', '^', '=', '!', ';', ',', '[', '(', '{', '~')
-//   );
-//   extensionContext.subscriptions.push(
-//     vscode.languages.registerCompletionItemProvider({ language: '*' }, 
-//     new InlineCompletionItemProvider(), 
-//     ' ', '.', '+', '-', '*', '/', '%', '*', '<', '>', '&', '|', '^', '=', '!', ';', ',', '[', '(', '{', '~')
-//   );
-// }
