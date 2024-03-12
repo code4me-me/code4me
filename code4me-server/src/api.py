@@ -1,9 +1,9 @@
 from __future__ import annotations 
-import os, time, random, json, uuid, glob, torch 
+import os, time, random, json, uuid, glob, torch, traceback
 
 from enum import Enum
-from typing import List, TypedDict
-from model import Model, Models
+from typing import List, Tuple
+from model import Model
 from datetime import datetime
 from joblib import Parallel, delayed
 from flask import Blueprint, request, Response, redirect
@@ -28,17 +28,26 @@ def authorise(req) -> str:
         raise ValueError("Missing bearer token")
     return auth
 
-def get_predictions(completion_request: dict) -> List[str]: 
+def get_predictions(completion_request: dict) -> Tuple[float, dict[str, str]]: 
     ''' Return a list of predictions. '''
 
     prefix = completion_request['prefix'].rstrip()
     suffix = completion_request['suffix']
 
+    def predict_model(model: Model) -> str:
+        try:
+            return model.value[1](prefix, suffix)[0]
+        except torch.cuda.OutOfMemoryError:
+            exit(1)
+
     t0 = datetime.now()
-    result = Parallel(n_jobs=-1, prefer='threads')(delayed(model.value(prefix, suffix)) for model in Models)
+    predictions = Parallel(n_jobs=os.cpu_count(), prefer="threads")(delayed(predict_model)(model) for model in Model)
     time = (datetime.now() - t0).total_seconds() * 1000
-    result = {model.name: result for model, result in zip(Models, result)}
-    return time, result
+
+    predictions = {model.name: prediction for model, prediction in zip(Model, predictions)}
+    return time, predictions
+
+test_num = 0 
 
 @v2.route("/prediction/autocomplete", methods=["POST"])
 @limiter.limit("4000/hour")
@@ -50,16 +59,27 @@ def autocomplete_v2():
         request_json = request.json
         
         filter_time, should_filter = filter_request(user_uuid, request_json)
-        predict_time, predictions = None, {} \
+        should_filter = False  # TODO: REMOVE
+
+        print('filter' if should_filter else 'predict')
+        predict_time, predictions = (None, {}) \
             if should_filter and (request_json['trigger'] != 'manual') \
             else get_predictions(request_json)
 
+        # TODO: REMOVE
+        global test_num
+        test_num += 1
+        predictions = {model: f'{prediction}_{test_num}' for model, prediction in predictions.items()}
+
+        print(predictions)
+        
+        # TODO: only compute and reply the following IFF predictions are generated
         verify_token = uuid.uuid4().hex
         prompt_survey = should_prompt_survey(user_uuid)
 
         store_completion_request(user_uuid, verify_token, {
             **request_json,
-            'timestamp': datetime.now().toisoformat(),
+            'timestamp': datetime.now().isoformat(),
             'filter_time': filter_time,
             'should_filter': should_filter,
             'predict_time': predict_time,
@@ -75,6 +95,9 @@ def autocomplete_v2():
         }
 
     except Exception as e:
+        # logging may be a good idea for debugging
+        traceback.print_exc()
+        print(request_json)
         return response({
             "error": str(e)
         }, status=400)

@@ -1,5 +1,6 @@
 import os 
 from enum import Enum
+from typing import Callable
 
 # TODO: (revert) remove up to `else:`
 if os.getenv("CODE4ME_TEST", "false") == "true":
@@ -12,9 +13,9 @@ if os.getenv("CODE4ME_TEST", "false") == "true":
     unixcoder_wrapper = type("UniXCoder", (object,), {})
     codegpt = type("CodeGPT", (object,), {})
 
-    incoder.generate = lambda left, right: "incoder"
-    unixcoder_wrapper.generate = lambda left, right: "unixcoder"
-    codegpt.codegpt_predict = lambda left, right: "codegpt"
+    incoder.generate = lambda left, right: ['predict_incoder']
+    unixcoder_wrapper.generate = lambda left, right: ['predict_unixcoder']
+    codegpt.codegpt_predict = lambda left, right: ['predict_codegpt']
 else: 
     # ooh yeah, import statements in an else stmt; i see new things every day 
     import incoder
@@ -33,11 +34,3 @@ class Model(Enum):
                 if item.value[0] == value:
                     return item
         return super()._missing_(value)
-
-
-class Models(Enum):
-    ''' New model enum because I don't want to keep track of indices in my user study - Aral '''
-
-    InCoder     = incoder.generate 
-    UniXCoder   = unixcoder_wrapper.generate
-    CodeGPT     = codegpt.codegpt_predict

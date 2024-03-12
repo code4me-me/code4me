@@ -18,9 +18,9 @@ class Filter(enum.Enum):
     JOINT   = 'joint'
 
 filters = {
-    Filter.CONTEXT: lambda: 1,
-    Filter.FEATURE: lambda: 0,
-    Filter.JOINT:   lambda: 0, 
+    Filter.CONTEXT: lambda request_json: 1,
+    Filter.FEATURE: lambda request_json: 0,
+    Filter.JOINT:   lambda request_json: 0, 
 }
 
 # Cache of user_uuid -> (last_access, filter_type)
@@ -87,5 +87,8 @@ def should_prompt_survey(user_uuid: str):
     ''' Return whether to prompt the user with survey. I re-specify it here, 
         as it depends on `USER_STUDY_DIR` '''
 
-    n_suggestions = len(os.listdir(os.path.join(USER_STUDY_DIR, user_uuid)))
+    user_dir = os.path.join(USER_STUDY_DIR, user_uuid)
+    if not os.path.exists(user_dir): return False
+
+    n_suggestions = len(os.listdir(user_dir))
     return n_suggestions >= 100 and n_suggestions % 50 == 0
