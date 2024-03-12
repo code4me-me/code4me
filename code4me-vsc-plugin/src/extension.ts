@@ -5,7 +5,7 @@ import * as path from 'path';
 import { clear } from 'console';
 
 // After how many ms the completion is manually triggered if the user is idle. 
-const IDLE_TRIGGER_DELAY_MS = 3000; 
+const IDLE_TRIGGER_DELAY_MS = 2000; 
 // After how many ms the automatic completion is sent to the server.
 // I know this is suboptimal, but otherwise it's literally on almost every keystroke. 
 // For reference, Copilot (2022 version) uses 75ms 
@@ -35,24 +35,17 @@ const CODE4ME_VERSION = vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.pa
 
 // TODO: (revert) for testing purposes
 const AUTOCOMPLETE_URL = 'http://127.0.0.1:5000/api/v2/prediction/autocomplete'
-const VERIFY_URL = 'http://127.0.0.1:5000/api/v2/prediction/autocomplete'
+const VERIFY_URL = 'http://127.0.0.1:5000/api/v2/prediction/verify'
 
 // const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
 // const VERIFY_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
 
-
-// const allowedTriggerCharacters = ['.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
-
-// const allowedTriggerCharacters = Array.from({length: 128}, (_, i) => String.fromCharCode(i));
-// The above, but only including visible characters 
-// const allowedTriggerCharacters = Array.from({length: 95}, (_, i) => String.fromCharCode(i + 32));
+const allowedTriggerCharacters = [' ', '.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
 
 // NOTE: extremely bad practice to put state at the top here, as 
 // it is 1. not clear what it's for; 2. not disposed of properly when extension is deactivated
 let promptMaxRequestWindow = true;
-let sessionCompletions = 0;
-let responseflakiness = true;  // for testing, check what happens if responses are flaky
 
 // Enum for triggers: manual, timeout, or automatic 
 // TODO: Is this really how typed enums work in TS? 
@@ -142,7 +135,7 @@ async function createCompletionItemProvider(
     vscode.workspace.onDidChangeTextDocument(() => { completionItemProvider.setIdleTrigger() }),
     // Actual completions provider (+ handles automatic triggers)
     vscode.languages.registerCompletionItemProvider(
-      languageFilters, completionItemProvider
+      languageFilters, completionItemProvider, ...allowedTriggerCharacters
     ), 
     vscode.commands.registerCommand('verifyInsertion', verifyInsertion)
   )
@@ -171,7 +164,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 
   trigger: TriggerType = 'auto'
   idleTimer: NodeJS.Timeout | undefined = undefined // triggered after the user is idle for a while
-  predictionCache: vscode.CompletionList = new vscode.CompletionList([], false)
+  predictionCache: vscode.CompletionList<CustomCompletionItem> = new vscode.CompletionList([], false)
 
   /** Interface method for providing a (optionally preliminary) set of completions */
   async provideCompletionItems(
@@ -188,6 +181,8 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
       // Timeout invocations will already have called the completion API, so we return the cache
       case 'idle':
         this.trigger = 'auto'
+        const shownTime = new Date().toISOString()
+        this.predictionCache.items.forEach(item => {item.shownTimes.push(shownTime)})
         return this.predictionCache 
 
       // Manual invocations always call the API. 
@@ -270,7 +265,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     document: vscode.TextDocument,
     position: vscode.Position,
     trigger: TriggerType,
-  ): Promise<vscode.CompletionList> {
+  ): Promise<vscode.CompletionList<CustomCompletionItem>> {
     
     const response = await this.callCompletionsAPI(document, position, trigger)
     if (!response) return this.predictionCache
@@ -293,6 +288,13 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     }
 
     this.predictionCache = new vscode.CompletionList(completionItems, true)
+
+    if (trigger !== 'idle') { // We handle the 'idle' case in `provideCompletionItems`, closer to when they are displayed
+      const shownTime = new Date().toISOString()
+      this.predictionCache.items.forEach(item => {
+        item.shownTimes.push(shownTime)
+      })
+    }
     // console.log('cached predictions:', this.predictionCache.items.length, 'items')
     return this.predictionCache
   }
@@ -302,16 +304,18 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     document: vscode.TextDocument, 
     position: vscode.Position, 
     verifyToken: string
-  ): vscode.CompletionItem
+  ): CustomCompletionItem
   {
     const [model, completion] = prediction
     const item = new vscode.CompletionItem(
       completion, 
       vscode.CompletionItemKind.EnumMember // I chose this because it's less common than 'Property' 
-    )
+    ) as CustomCompletionItem
     item.insertText = completion  // No longer necessary as 'detail' now contains the logo
     item.filterText = completion  // The culprit of why suggestions were ranked at the bottom
-    item.sortText = '0' // Force sort at the top always (when compared with other identical prefixes)
+    // item.sortText = '0' // Force sort at the top always (when compared with other identical prefixes)
+    // Sort model === incoder 0, model === unixcoder 1, model === chatgpt 2, based on Models above 
+    item.sortText = (model === 'InCoder') ? '0' : (model === 'UniXCoder') ? '1' : '2'
     item.detail = '\u276E\uff0f\u276f' // Logo 
   
     // TODO: in the future, it could be nice to show to users which model generated 
@@ -331,11 +335,12 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     } else if (characterAfterCursor === lastCharacterOfPrediction) {
       item.range = new vscode.Range(position, positionPlusOne);
     }
+    item.shownTimes = [];
   
     item.command = {
       command: 'verifyInsertion',
       title: 'Verify Insertion',
-      arguments: [prediction, position, document, verifyToken, this.uuid, () => {clearTimeout(this.idleTimer)}]
+      arguments: [prediction, position, document, verifyToken, this.uuid, item.shownTimes, () => {clearTimeout(this.idleTimer)}]
     };
     return item;
   }
@@ -390,6 +395,11 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   }
 }
 
+/** Extend the completionItem class with shownTimes field so TS doesn't throw a tantrum */
+class CustomCompletionItem extends vscode.CompletionItem {
+  shownTimes: string[] = []
+}
+
 /**
    * Calls verification API after a 30s timeout with the completion and the ground truth.
    * TODO: this implementation is incorrect. (also the lack of documentation does not help at all for tracking lines)
@@ -406,15 +416,18 @@ function verifyInsertion(
   position: vscode.Position, 
   document: vscode.TextDocument,
   verifyToken: string,
-  uuid: string, 
-  callback: () => void,
+  uuid: string,
+  shownTimes: string[], 
+  timeout_callback: () => void,
 ) {
   // We clear the idle Timeout as accepting a completion counts as an interaction. 
   // But, we probably don't want to generate new completions instantly. 
-  callback() 
+  timeout_callback() 
+  const acceptTime = new Date().toISOString()
 
   const [model, completion] = prediction
-  console.log('accepted completion:', completion, 'by model', model, 'at position:', position)
+  // console.log('accepted completion:', completion, 'by model', model, 'at position:', position)
+  console.log(`accepted ${model}'s completion at (${position.line}, ${position.character}): ${completion}`)
 
   const documentName = document.fileName;
   let lineNumber = position.line;
@@ -468,15 +481,18 @@ function verifyInsertion(
       document.lineAt(lineNumber).text?.substring(characterOffset).trim() : null;
     
     console.log(uuid, 'sending ground-truth: ', groundTruth, 'at line', lineNumber, ' and characterOffset: ', characterOffset)
+
+    const body = {
+      'verifyToken': verifyToken,
+      'chosen_model': model, 
+      'ground_truth': groundTruth,
+      'shown_times': shownTimes,
+      'accept_time': acceptTime,
+    }
+
     const response = await fetch(VERIFY_URL, {
       method: 'POST',
-      body: JSON.stringify(
-        {
-          "verifyToken": verifyToken,
-          "chosenModel": model,
-          "groundTruth": groundTruth, 
-        }
-      ),
+      body: JSON.stringify(body),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + uuid
