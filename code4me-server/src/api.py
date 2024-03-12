@@ -13,6 +13,7 @@ from user_study import (
     filter_request, 
     store_completion_request,
     should_prompt_survey,
+    USER_STUDY_DIR,
 )
 
 v1 = Blueprint("v1", __name__)
@@ -90,7 +91,7 @@ def autocomplete_v2():
 
         return {
             'predictions': predictions,
-            'verify_token': verify_token,
+            'verifyToken': verify_token,
             'survey': prompt_survey
         }
 
@@ -101,6 +102,34 @@ def autocomplete_v2():
         return response({
             "error": str(e)
         }, status=400)
+
+@v2.route("/prediction/verify", methods=["POST"])
+@limiter.limit("4000/hour")
+def verify():
+
+    user_uuid = authorise(request)
+    verify_json = request.json
+
+    print(verify_json)
+
+    verify_token = verify_json['verifyToken']
+    file_path = os.path.join(USER_STUDY_DIR, user_uuid, f'{verify_token}.json')
+
+    with open(file_path, 'r+') as completion_file:
+        completion_json = json.load(completion_file)
+
+        if 'ground_truth' in completion_json:
+            return response({
+                "error": "Already used verify token"
+            }, status=400)
+
+        completion_json.update(verify_json)
+
+        completion_file.seek(0)
+        completion_file.write(json.dumps(completion_json))
+        completion_file.truncate()
+
+    return response({'success': True})
 
 
 ##### NOTE: OLD IMPLEMENTATION KEPT FOR JETBRAINS USERS ####

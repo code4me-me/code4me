@@ -14,8 +14,8 @@ if os.getenv("CODE4ME_TEST", "false") == "true":
     codegpt = type("CodeGPT", (object,), {})
 
     incoder.generate = lambda left, right: ['predict_incoder']
-    unixcoder_wrapper.generate = lambda left, right: ['predict_unixcoder']
-    codegpt.codegpt_predict = lambda left, right: ['predict_codegpt']
+    unixcoder_wrapper.generate = lambda left, right: [' predict_unixcoder']
+    codegpt.codegpt_predict = lambda left, right: [' (predict_codegpt']
 else: 
     # ooh yeah, import statements in an else stmt; i see new things every day 
     import incoder
