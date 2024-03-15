@@ -34,12 +34,12 @@ const AVG_TOKEN_LENGTH_IN_CHARS = 7984;
 const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
 const CODE4ME_VERSION = vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
 
-// TODO: (revert) for testing purposes
-const AUTOCOMPLETE_URL = 'http://127.0.0.1:3000/api/v2/prediction/autocomplete'
-const VERIFY_URL = 'http://127.0.0.1:3000/api/v2/prediction/verify'
+// // TODO: (revert) for testing purposes
+// const AUTOCOMPLETE_URL = 'http://127.0.0.1:3000/api/v2/prediction/autocomplete'
+// const VERIFY_URL = 'http://127.0.0.1:3000/api/v2/prediction/verify'
 
-// const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
-// const VERIFY_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
+const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
+const VERIFY_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
 
 const allowedTriggerCharacters = [' ', '.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
@@ -84,7 +84,8 @@ async function start(context: vscode.ExtensionContext) {
   async function setupCompletions(): Promise<void> {
 
     let config = vscode.workspace.getConfiguration('code4me')
-    if (config.get('promptDataStorage')) { doPromptDataStorageMenu(config) }
+    // TODO: Revert this after the user-study 
+    // if (config.get('promptDataStorage')) { doPromptDataStorageMenu(config) }
 
     if (completionItemProvider !== null) {
       console.log('existing code4me completion provider found, resetting')
