@@ -34,6 +34,7 @@ services:
       - ./code4me-server/templates:/codeforme/templates
       - ./code4me-server/static:/codeforme/static
       - ./codegpt_checkpoint:/codeforme/codegpt_checkpoint
+      - ./code4me-server/models:/codeforme/models
     expose:
       - 3000
     environment:
