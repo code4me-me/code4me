@@ -192,10 +192,10 @@ def autocomplete():
             "rightContext": right_context if store_context else None
         }))
 
-    # # TODO: disabled surveys temporarily, as we are currently looking through >1M files on every request. 
-    n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
-    survey = n_suggestions >= 100 and n_suggestions % 50 == 0
-    # survey = False
+    # # # TODO: disabled surveys temporarily, as we are currently looking through >1M files on every request. 
+    # n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
+    # survey = n_suggestions >= 100 and n_suggestions % 50 == 0
+    survey = False
 
     return response({
         "predictions": unique_predictions,
