@@ -48,8 +48,6 @@ def get_predictions(completion_request: dict) -> Tuple[float, dict[str, str]]:
     predictions = {model.name: prediction for model, prediction in zip(Model, predictions)}
     return time, predictions
 
-test_num = 0 
-
 @v2.route("/prediction/autocomplete", methods=["POST"])
 @limiter.limit("4000/hour")
 def autocomplete_v2():
@@ -59,28 +57,21 @@ def autocomplete_v2():
         user_uuid = authorise(request)
         request_json = request.json
         
-        filter_time, should_filter = filter_request(user_uuid, request_json)
-        should_filter = False  # TODO: REMOVE
+        filter_time, filter_type, should_filter = filter_request(user_uuid, request_json)
 
-        print('filter' if should_filter else 'predict')
-        predict_time, predictions = (None, {}) \
-            if should_filter and (request_json['trigger'] != 'manual') \
-            else get_predictions(request_json)
+        predict_time, predictions = get_predictions(request_json) \
+            if (not should_filter) or (request_json['trigger'] == 'manual') \
+            else (None, {}) 
 
-        # TODO: REMOVE
-        global test_num
-        test_num += 1
-        predictions = {model: f'{prediction}_{test_num}' for model, prediction in predictions.items()}
+        print(f'\t\033[1m{"filter" if should_filter else "predict"}\033[0m {len(request_json["prefix"] + request_json["suffix"])} ({filter_type}) {[v[:10] for v in predictions.values()]}')
 
-        print(predictions)
-        
-        # TODO: only compute and reply the following IFF predictions are generated
-        verify_token = uuid.uuid4().hex
-        prompt_survey = should_prompt_survey(user_uuid)
+        verify_token = uuid.uuid4().hex if not should_filter else ''
+        prompt_survey = should_prompt_survey(user_uuid) if not should_filter else False
 
         store_completion_request(user_uuid, verify_token, {
             **request_json,
             'timestamp': datetime.now().isoformat(),
+            'filter_type': filter_type,  
             'filter_time': filter_time,
             'should_filter': should_filter,
             'predict_time': predict_time,
@@ -98,7 +89,6 @@ def autocomplete_v2():
     except Exception as e:
         # logging may be a good idea for debugging
         traceback.print_exc()
-        print(request_json)
         return response({
             "error": str(e)
         }, status=400)
@@ -202,9 +192,10 @@ def autocomplete():
             "rightContext": right_context if store_context else None
         }))
 
-    # TODO: disable surveys temporarily, as we are currently looking through >1M files on every request. 
+    # # TODO: disabled surveys temporarily, as we are currently looking through >1M files on every request. 
     n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
     survey = n_suggestions >= 100 and n_suggestions % 50 == 0
+    # survey = False
 
     return response({
         "predictions": unique_predictions,

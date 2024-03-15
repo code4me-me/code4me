@@ -10,8 +10,7 @@ limiter.init_app(app)
 app.register_blueprint(v1, url_prefix='/api/v1')
 app.register_blueprint(v2, url_prefix='/api/v2')
 
-# TODO: (revert) remove if and beyond
-markdown_path = 'markdowns/index.md' if Path('markdowns/index.md').exists() else Path(os.getcwd(), '..', 'markdowns/index.md')
+markdown_path = 'markdowns/index.md' 
 index_md = markdown.markdown(Path(markdown_path).read_text())
 
 
