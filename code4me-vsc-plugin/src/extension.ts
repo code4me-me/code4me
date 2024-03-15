@@ -9,9 +9,10 @@ const IDLE_TRIGGER_DELAY_MS = 2000;
 // After how many ms the automatic completion is sent to the server.
 // I know this is suboptimal, but otherwise it's literally on almost every keystroke. 
 // For reference, Copilot (2022 version) uses 75ms 
-const AUTO_DEBOUNCE_DELAY_MS = 200;
+// 250 is quite a lot but it seems to be an upper bound almost. can always lower it later
+const AUTO_DEBOUNCE_DELAY_MS = 700;
 // After how many ms to return the ground truth 
-const GROUND_TRUTH_DELAY_MS = 10000;
+const GROUND_TRUTH_DELAY_MS = 30000;
 
 const DATA_STORAGE_WINDOW_REQUEST_TEXT = `
 Code4Me exists for research purposes – we'd like to 
@@ -190,38 +191,39 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
         return this.predictionCache
 
       // Automatic invocations have a trailing debounce 
-      default: 
-        return this.debounce(async (bool: Boolean) => {
-          console.log('evaluating cb')
+      default:
+        return this.debounce((bool: Boolean) => {
           // this.useCache()
           return bool 
-            ? await this.getPredictions(document, position, 'auto') 
+            ? this.getPredictions(document, position, 'auto') 
             : this.predictionCache
         }, AUTO_DEBOUNCE_DELAY_MS)
     }
   }
 
-  // Debounce auto predictions (triggered at every keystroke and more events)
-  useCache: Function = () => {} 
-  timer: NodeJS.Timeout | undefined = undefined
+  wait: number = 0
 
-  async debounce(cb: Function, delay: number): Promise<Promise<vscode.CompletionList>> {
-    console.log('debouncing')
-    this.useCache() 
+  async debounce(cb: Function, delay: number): Promise<vscode.CompletionList> {
+
+    this.wait += 1
+    const wait = this.wait
+
     return new Promise((resolve, reject) => {
-      this.useCache() 
-      this.useCache = () => {
-        console.log('clearing cb')
-        clearTimeout(this.timer)
-        resolve(cb(false))
-      }
-      this.timer = setTimeout(() => {
-        console.log('resolving cb')
-        resolve(cb(true))
-        clearTimeout(this.idleTimer)
-      }, delay)}
-    )
+      setTimeout(async () => {
+        if (wait === this.wait) {
+          this.wait = 0 
+          await cb(true)
+          .then(async () => {
+            this.trigger = 'idle'  
+            await vscode.commands.executeCommand('editor.action.triggerSuggest')
+          })
+        } else {
+          return cb(false)
+        }
+      }, delay)
+    })
   }
+
 
   /** Interface method for updating completion items with additional information  */
   resolveCompletionItem?(item: vscode.CompletionItem, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CompletionItem> {
@@ -231,7 +233,6 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   /** Automatically invoke triggerSuggest if user is idle for `IDLE_TRIGGER_DELAY_MS` */
   async setIdleTrigger() {
     // console.log('called setIdle')
-    this.useCache() // I hate that I have to put this here but somehow it fixes the debounce 
     clearTimeout(this.idleTimer)
     this.idleTimer = setTimeout(async () => {
       
@@ -325,7 +326,22 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     const wordRange = document.getWordRangeAtPosition(position)
     if (wordRange) {
       const lastWord = document.getText(wordRange)
-      prediction[1] = lastWord + prediction[1]
+      // prediction[1] = lastWord + prediction[1]
+      // it may be that lastWord ends with the same characters as the start of prediction[1]
+      // in that case, we want to remove the overlapping letters of lastWord from prediction[1]
+      // and then prepend lastWord to prediction[1]
+      for (let i = 0; i < lastWord.length; i++) {
+        if (prediction[1].startsWith(lastWord.slice(i))) {
+          prediction[1] = lastWord.slice(0, i) + prediction[1]
+          break
+        }
+      }
+
+      // if the last word is a trigger word, we want to insert the completion with a space
+      if (allowedTriggerWords.includes(lastWord)) {
+        prediction[1] = ' ' + prediction[1]
+      }
+
     }
 
     const [model, completion] = prediction
