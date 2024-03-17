@@ -34,10 +34,6 @@ const AVG_TOKEN_LENGTH_IN_CHARS = 7984;
 const CODE4ME_EXTENSION_ID = 'Code4Me.code4me-plugin';
 const CODE4ME_VERSION = vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.packageJSON['version']
 
-// // TODO: (revert) for testing purposes
-// const AUTOCOMPLETE_URL = 'http://127.0.0.1:3000/api/v2/prediction/autocomplete'
-// const VERIFY_URL = 'http://127.0.0.1:3000/api/v2/prediction/verify'
-
 const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
 const VERIFY_URL       = 'https://code4me.me/api/v2/prediction/verify'
 
@@ -163,7 +159,6 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   idleTimer: NodeJS.Timeout | undefined = undefined // triggered after the user is idle for a while
   predictionCache: vscode.CompletionList<CustomCompletionItem> = new vscode.CompletionList([], false)
 
-  counter: number = 0
   /** Interface method for providing a (optionally preliminary) set of completions 
    * VSC Calls this somewhat arbitrarily whenever the user is typing (but not in comments/markdown cells). 
    * We want to provide completions, even in comments and markdown cells. 
@@ -182,7 +177,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     context: vscode.CompletionContext
   ): Promise<vscode.CompletionList | undefined> 
   {
-    console.log(`${this.counter}\t${this.trigger} called provideCompletionItems with ${context.triggerCharacter}`)
+    // console.log(`${this.trigger} called provideCompletionItems with ${context.triggerCharacter}`)
     clearTimeout(this.idleTimer)
 
     switch (this.trigger) {
@@ -298,13 +293,11 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
    */
   async cachePredictions(trigger: TriggerType): Promise<boolean> {
 
-    // console.log('called cachePredictions')
     const document = vscode.window.activeTextEditor?.document
     if (!document) return false
     const position = vscode.window.activeTextEditor?.selection.active
     if (!position) return false
 
-    // clearTimeout(this.timer)
     const completionList = await this.getPredictions(document, position, trigger, undefined)
     if (completionList.items.length === 0) return false
 
@@ -327,15 +320,12 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     const response = await this.callCompletionsAPI(document, position, trigger)
     if (!response) return this.predictionCache 
 
-    // response.predictions is Record<string, string>. 
-    // filter out empty predictions (second element in tuple)
+    // response.predictions is Record<string, string>. Filter out empty predictions (second element in tuple)
     const predictions = Object.entries(response.predictions).filter(([_, value]) => value !== '')
+    if (Object.values(predictions).length === 0) return new vscode.CompletionList([], false)
+
     const verifyToken = response.verifyToken
     const survey = response.survey
-
-    // console.log('received predictions:', predictions.length, 'items', Object.values(predictions))
-    if (Object.values(predictions).length === 0) return new vscode.CompletionList([], false)
-    
     const completionItems = predictions.map(prediction => {
       return this.createCompletionItem(prediction, document, position, triggerCharacter, verifyToken)
     })
@@ -344,10 +334,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
       doPromptSurvey(this.uuid, this.config)
     }
 
-    const completionList = new vscode.CompletionList(completionItems, true)
-
-    console.log('cached predictions:', completionList.items.length, 'items', completionList.items, this.trigger)
-    return completionList
+    return new vscode.CompletionList(completionItems, true)
   }
 
   private createCompletionItem(
@@ -359,17 +346,17 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   ): CustomCompletionItem
   {
     const [model, completion] = prediction
-    const range = getCompletionItemRange(document, position, completion)
-    const prefix = getCompletionItemPrefix(document, position, completion, triggerCharacter)
+    const endPos = getCompletionSuffixPos(document, position, completion)
+    const [prefix, startPos] = getCompletionPrefixAndPos(document, position, completion, triggerCharacter)
 
     const item = new vscode.CompletionItem(
       prefix + completion, 
       vscode.CompletionItemKind.EnumMember // I chose this as it is a relatively distinct icon 
     ) as CustomCompletionItem
 
-    item.range = range 
-    item.insertText = completion  // No longer necessary as 'detail' now contains the logo
-    item.filterText = completion  // The culprit of why suggestions were ranked at the bottom
+    item.range = new vscode.Range(startPos, endPos) 
+    // item.insertText = completion  // No longer necessary as 'detail' now contains the logo
+    item.filterText = prefix + completion  // The culprit of why suggestions were ranked at the bottom
     // TODO: I'm not actually sure that the `sortText` below does anything. 
     item.sortText = (model === 'InCoder') ? '0' : (model === 'UniXCoder') ? '1' : '2'
     item.detail = '\u276E\uff0f\u276f' // Added the Logo here instead 
@@ -382,7 +369,9 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     };
     item.shownTimes = [new Date().toISOString()];
 
-    console.log(`\t${prefix} • ${prediction[1].slice(0, 10)} ${prediction[0]}`)
+    // This is useful if you want to see what's exactly going on with the range and prefix modifications
+    // I use • to denote the cursor position
+    // console.log(`  ${prefix}•${prediction[1].slice(0, 10)} ${prediction[0]} \t -> ${prefix+completion} for ${document.getText(item.range)}`)
     return item;
   }
 
@@ -409,7 +398,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     // DEBUG
     const lastPrefixLine = prefix.split('\n').pop()
     const firstSuffixLine = suffix.split('\n').shift()
-    const triggerString = `${trigger} call to completions API [...${lastPrefixLine?.slice(-10)}<S>${firstSuffixLine?.slice(0, 10)}...]`
+    const triggerString = `${trigger} call to completions API \t\`${lastPrefixLine?.slice(-10)}•${firstSuffixLine?.slice(0, 10)}\``
     console.log(triggerString)
 
     const clearIdleTimer = () => { clearTimeout(this.idleTimer) }
@@ -455,11 +444,11 @@ class CustomCompletionItem extends vscode.CompletionItem {
  * we just need to iteratively check a larger range starting from suffix[0] to suffix[0:i], 
  * and see if it matches the generated completion.
  */
-function getCompletionItemRange(
+function getCompletionSuffixPos(
   document: vscode.TextDocument,
   position: vscode.Position, 
   completion: string, 
-): vscode.Range {
+): vscode.Position {
 
   const curLine : vscode.TextLine = document.lineAt(position)
   let endPos: number = position.character
@@ -472,22 +461,21 @@ function getCompletionItemRange(
       endPos -- 
       break 
     }
-    console.log(`completion includes ${suffix}`)
   }
-  console.log(`using range ${position.character}, ${endPos}`)
-  return new vscode.Range(position, new vscode.Position(position.line, endPos))
+  return new vscode.Position(position.line, endPos)
 }
 
 /** If the current position is attached to a word (i.e. prefix has no trailing space/context.triggerChar), 
- * then we want to prepend that last word to the insertText and filterText for it to show up in the menu
+ * then we want to prepend that last word to the insertText and filterText for it to show up in the menu,
+ * and update the range. 
  * Additionally, we want to prepend a space if the previous word is a trigger word, like 'await' 
  */
-function getCompletionItemPrefix(
+function getCompletionPrefixAndPos(
   document: vscode.TextDocument,
   position: vscode.Position,
   completion: string,
   triggerCharacter: string | undefined, 
-): string {
+): [string, vscode.Position] {
   
   const wordRange = document.getWordRangeAtPosition(position)
   if (wordRange) {
@@ -498,20 +486,20 @@ function getCompletionItemPrefix(
     // and then prepend lastWord to prediction[1]
     for (let i = 0; i < lastPrefixWord.length; i++) {
       if (completion.startsWith(lastPrefixWord.slice(i))) 
-        return lastPrefixWord.slice(0, i)
+        return [lastPrefixWord.slice(0, i), position.translate(0, -i)]
     }
 
     // If the last word is a trigger word, we want to insert the completion with a space
     if (allowedTriggerWords.includes(lastPrefixWord)) 
-      return ' ' 
+      return [' ', position]
 
     // Alternatively, if the last word is simply the start of the completion, 
     // but they don't have any overlapping letters; we want to join them
     // for languages like fucking javascript to accept the completion
     if (!triggerCharacter) 
-      return lastPrefixWord
+      return [lastPrefixWord, wordRange.start]
   }
-  return '' 
+  return ['', position]
 }
 
 /**
@@ -540,8 +528,6 @@ function verifyInsertion(
   const acceptTime = new Date().toISOString()
 
   const [model, completion] = prediction
-  // console.log('accepted completion:', completion, 'by model', model, 'at position:', position)
-  // console.log(`accepted ${model}'s completion at (${position.line}, ${position.character}): ${completion}`)
 
   const documentName = document.fileName;
   let lineNumber = position.line;
