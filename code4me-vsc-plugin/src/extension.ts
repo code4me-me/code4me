@@ -5,12 +5,12 @@ import * as path from 'path';
 import { clear } from 'console';
 
 // After how many ms the completion is manually triggered if the user is idle. 
-const IDLE_TRIGGER_DELAY_MS = 2000; 
+const IDLE_TRIGGER_DELAY_MS = 3000; 
 // After how many ms the automatic completion is sent to the server.
 // I know this is suboptimal, but otherwise it's literally on almost every keystroke. 
 // For reference, Copilot (2022 version) uses 75ms 
 // 250 is quite a lot but it seems to be an upper bound almost. can always lower it later
-const AUTO_DEBOUNCE_DELAY_MS = 700;
+const AUTO_DEBOUNCE_DELAY_MS = 300;
 // After how many ms to return the ground truth 
 const GROUND_TRUTH_DELAY_MS = 30000;
 
@@ -39,7 +39,7 @@ const CODE4ME_VERSION = vscode.extensions.getExtension(CODE4ME_EXTENSION_ID)?.pa
 // const VERIFY_URL = 'http://127.0.0.1:3000/api/v2/prediction/verify'
 
 const AUTOCOMPLETE_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
-const VERIFY_URL = 'https://code4me.me/api/v2/prediction/autocomplete'
+const VERIFY_URL       = 'https://code4me.me/api/v2/prediction/verify'
 
 const allowedTriggerCharacters = [' ', '.', '+', '-', '*', '/', '%', '<', '>', '**', '<<', '>>', '&', '|', '^', '+=', '-=', '==', '!=', ';', ',', '[', '(', '{', '~', '=', '<=', '>='];
 const allowedTriggerWords = ['await', 'assert', 'raise', 'del', 'lambda', 'yield', 'return', 'while', 'for', 'if', 'elif', 'else', 'global', 'in', 'and', 'not', 'or', 'is', 'with', 'except'];
@@ -115,7 +115,6 @@ async function createCompletionItemProvider(
   // TODO: create an async function to retrieve language-specific settings, 
   const languageFilters = { pattern: '**' }
   const uuid : string = context.globalState.get('code4me-uuid')!;
-  // console.log('uuid', uuid)
   const completionItemProvider = new CompletionItemProvider(uuid, config)
 
   disposables.push(
@@ -129,7 +128,7 @@ async function createCompletionItemProvider(
     }),
     // Timeout trigger
     vscode.workspace.onDidChangeTextDocument((event) => { 
-      if (event.contentChanges[0].rangeLength > 0) completionItemProvider.setIdleTrigger() 
+      if (event.contentChanges.length > 0) completionItemProvider.setIdleTrigger()
     }),
     // Actual completions provider (+ handles automatic triggers)
     vscode.languages.registerCompletionItemProvider(
@@ -164,65 +163,114 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   idleTimer: NodeJS.Timeout | undefined = undefined // triggered after the user is idle for a while
   predictionCache: vscode.CompletionList<CustomCompletionItem> = new vscode.CompletionList([], false)
 
-  /** Interface method for providing a (optionally preliminary) set of completions */
+  counter: number = 0
+  /** Interface method for providing a (optionally preliminary) set of completions 
+   * VSC Calls this somewhat arbitrarily whenever the user is typing (but not in comments/markdown cells). 
+   * We want to provide completions, even in comments and markdown cells. 
+   * Furthermore, if the promise this method returns is not resolved, VSC abstains from calling it again. 
+   * 
+   * So, to provide completion items analogously to an inline ghost-text display; We need to:
+   * 1. Make sure promises are resolved ASAP. 
+   * 2. Provide context-relevant completions (luckily document.getText() is a live method).
+   * 3. Only call the completion API after debouncing to avoid unnecessary invocation and delay. 
+   * I detail this further in the 'default' section, which concerns this type of invocation (the majority)
+   */
   async provideCompletionItems(
     document: vscode.TextDocument, 
     position: vscode.Position, 
     token: vscode.CancellationToken, 
     context: vscode.CompletionContext
-  ): Promise<vscode.CompletionList>
+  ): Promise<vscode.CompletionList | undefined> 
   {
-    console.log('called provideCompletionItems')
+    console.log(`${this.counter}\t${this.trigger} called provideCompletionItems with ${context.triggerCharacter}`)
     clearTimeout(this.idleTimer)
-    // And, behold, why switch statements are actually not that great 
+
     switch (this.trigger) {
 
-      // Timeout invocations will already have called the completion API, so we return the cache
-      case 'idle':
+      case 'idle': // Idle invocation means the API call just got cached 
         this.trigger = 'auto'
-        const shownTime = new Date().toISOString()
-        this.predictionCache.items.forEach(item => {item.shownTimes.push(shownTime)})
-        return this.predictionCache 
-
-      // Manual invocations always call the API. 
-      // No need to debounce these thanks to the IntelliSense UI (user cannot spam)
-      case 'manual':  
+        // const shownTime = new Date().toISOString()
+        // this.predictionCache.items.forEach(item => {item.shownTimes.push(shownTime)})
+        return Promise.resolve(this.predictionCache)
+      
+      case 'manual':  // Manual invocations always call the API. 
+        // No need to debounce these thanks to the IntelliSense UI (user cannot spam)
         this.trigger = 'auto'
-        this.predictionCache = await this.getPredictions(document, position, 'manual')
-        return this.predictionCache
+        return this.getPredictions(document, position, 'manual', context.triggerCharacter)
 
-      // Automatic invocations have a trailing debounce 
+      // Automatic invocations should have a trailing debounce (let me explain why this took 3 days)
       default:
-        return this.debounce((bool: Boolean) => {
-          // this.useCache()
-          return bool 
-            ? this.getPredictions(document, position, 'auto') 
-            : this.predictionCache
-        }, AUTO_DEBOUNCE_DELAY_MS)
+        return await this.getPredictions(document, position, 'auto', context.triggerCharacter)
+
+        /** We return a promise and we don't want it to take too long for it is resolved. 
+         *  Particularly, we know we can resolve a promise the second the user types another character. 
+         *  This is suboptimal (we lose a character of potential IntelliSense filtering strength)
+
+         *  Optionally, we can also resolve these within a certain time; but for this to be reliable the
+         *  timeout will be much too long and risk losing more keystrokes. 
+
+         *  So, what can we do? We need a way to immediately (or ASAP) resolve promises, without
+         *  knowing whether the user will type another character. The only option I see is time-based,
+         *  but then this is practically the same as the idle timer 
+
+         *  Okay, update: this is not at all the same as just using the idle timer (just tried it out)
+         *  What happens is that even though we re-invoke triggerSuggest, the completion menu won't be updated
+         *  If only we could actually control when provideCompletionItems is called... 
+         *  or provide a mutable list of completions which I presume happens in the inline (ghost-text) version. 
+
+         *  So, the next best thing is to:
+         *  Set a callback on automatic invocation to resolve when EITHER 
+         *  1. The user types another character (which we track with setIdleTrigger)
+         *     Return predictionCache, as we want the user to be done typing before generating preds. 
+         *  2. A set amount of time has passed (ideally <100ms the human reaction time)
+         *     Call API, as we ASSUME the user is done typing.  
+
+         *  Case 2 really warrants an entire study of its own; I am surprised about the lack 
+         *  of information (and API support) out there on HCI regarding debounce timers, 
+         *  even though they should be prominent on every web-based application. 
+
+         *  Anyway, the above would make sense in most programming languages but this is JS. 
+         *  As a result, our caching callback from (1) will only be called at the next event loop, 
+         *  and the promise is only resolved at the end. This blocks provideCompletionItems from 
+         *  being invoked for an entire loop, and prevents completions after the first one. 
+         *  The system gets out of sync and all completions are blocked after the first. 
+
+         *  So now we need to keep track of fucking event loops and lose another character on 
+         *  some invocations. So, that's why we have a counter that keeps track, and 
+         *  we check if the counter exceeds by more than 2 in which case we can be certain the 
+         *  user continued typing. */ 
+
+
+        //  this.debounce() // In theory we don't need to call this anymore as this method blocks
+
+        // return new Promise((resolve, reject) => {
+        //   const timer = setTimeout(() => {
+        //     resolve(this.getPredictions(document, position, 'auto'))
+        //     // this.trigger = 'idle'
+        //     // vscode.commands.executeCommand('editor.action.triggerSuggest')
+        //   }, AUTO_DEBOUNCE_DELAY_MS)
+        //   this.cancelAuto = () => {
+        //     resolve(this.predictionCache)
+        //     clearTimeout(timer)
+        //     this.cancelAuto = () => {} 
+        //   }
+        //   this.autoCount = 0
+        // })
+
+        // Alternatively, what if we replace the cache with a Promise? 
+        // Intuitively, it seems like a bad idea to have a (essentially) mutable cache; 
+        // because we need to ensure resolving in multiple methods (less coherent code)
+        // But, maybe this is why we keep shooting ourselves in the foot with gridlocks 
+        // Let's break it down case-by-case: 
+        // 1. Manual does not warrant caching so no problem. It just updates the cache. 
+        // 2. Idle invocations only cache completions AFTER they are received. Thus the cache 
+        //    is just a place to store values temporarily. 
+        // 3. Automatic Invocations either update completions or return existing ones (if it's a clear bad time)
+        //    Yeah I leave this for someone else to figure out
+
+        // Okay let's be utilistic here. 
+        // We can also track changes using the 
     }
-  }
-
-  wait: number = 0
-
-  async debounce(cb: Function, delay: number): Promise<vscode.CompletionList> {
-
-    this.wait += 1
-    const wait = this.wait
-
-    return new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        if (wait === this.wait) {
-          this.wait = 0 
-          await cb(true)
-          .then(async () => {
-            this.trigger = 'idle'  
-            await vscode.commands.executeCommand('editor.action.triggerSuggest')
-          })
-        } else {
-          return cb(false)
-        }
-      }, delay)
-    })
   }
 
 
@@ -233,7 +281,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
   
   /** Automatically invoke triggerSuggest if user is idle for `IDLE_TRIGGER_DELAY_MS` */
   async setIdleTrigger() {
-    // console.log('called setIdle')
+
     clearTimeout(this.idleTimer)
     this.idleTimer = setTimeout(async () => {
       
@@ -257,7 +305,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     if (!position) return false
 
     // clearTimeout(this.timer)
-    const completionList = await this.getPredictions(document, position, trigger)
+    const completionList = await this.getPredictions(document, position, trigger, undefined)
     if (completionList.items.length === 0) return false
 
     this.predictionCache = completionList
@@ -273,6 +321,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     document: vscode.TextDocument,
     position: vscode.Position,
     trigger: TriggerType,
+    triggerCharacter: string | undefined, 
   ): Promise<vscode.CompletionList<CustomCompletionItem>> {
     
     const response = await this.callCompletionsAPI(document, position, trigger)
@@ -288,104 +337,52 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     if (Object.values(predictions).length === 0) return new vscode.CompletionList([], false)
     
     const completionItems = predictions.map(prediction => {
-      return this.createCompletionItem(prediction, document, position, verifyToken)
+      return this.createCompletionItem(prediction, document, position, triggerCharacter, verifyToken)
     })
 
     if (survey && this.config.get('promptSurvey')) {
       doPromptSurvey(this.uuid, this.config)
     }
 
-    this.predictionCache = new vscode.CompletionList(completionItems, false)
+    const completionList = new vscode.CompletionList(completionItems, true)
 
-    if (trigger !== 'idle') { // We handle the 'idle' case in `provideCompletionItems`, closer to when they are displayed
-      const shownTime = new Date().toISOString()
-      this.predictionCache.items.forEach(item => {
-        item.shownTimes.push(shownTime)
-      })
-    }
-
-    // console.log('cached predictions:', this.predictionCache.items.length, 'items')
-    return this.predictionCache
+    console.log('cached predictions:', completionList.items.length, 'items', completionList.items, this.trigger)
+    return completionList
   }
 
   private createCompletionItem(
     prediction: [string, string], 
     document: vscode.TextDocument, 
     position: vscode.Position, 
+    triggerCharacter: string | undefined, 
     verifyToken: string
   ): CustomCompletionItem
   {
-    // // If the current position is attached to a word (i.e. prefix has no trailing space), 
-    // // then we want to prepend that last word to the insertText and filterText. 
-    // // Otherwise, it doesn't show up in intellisense 
-    // Something along the lines of the following; but consider using `document.getWordRangeAtPosition`
-    // const prefix = document.getText(new vscode.Range(position.with(undefined, 0), position))
-    // if (prefix.charAt(prefix.length - 1) !== ' ') {
-    //   const lastWord = prefix.split(' ').pop()
-    //   prediction[1] = lastWord + prediction[1]
-    // }
-    const wordRange = document.getWordRangeAtPosition(position)
-    if (wordRange) {
-      const lastWord = document.getText(wordRange)
-      // prediction[1] = lastWord + prediction[1]
-      // it may be that lastWord ends with the same characters as the start of prediction[1]
-      // in that case, we want to remove the overlapping letters of lastWord from prediction[1]
-      // and then prepend lastWord to prediction[1]
-      for (let i = 0; i < lastWord.length; i++) {
-        if (prediction[1].startsWith(lastWord.slice(i))) {
-          prediction[1] = lastWord.slice(0, i) + prediction[1]
-          break
-        }
-      }
-
-      // if the last word is a trigger word, we want to insert the completion with a space
-      if (allowedTriggerWords.includes(lastWord)) {
-        prediction[1] = ' ' + prediction[1]
-      }
-
-    }
-
     const [model, completion] = prediction
+    const range = getCompletionItemRange(document, position, completion)
+    const prefix = getCompletionItemPrefix(document, position, completion, triggerCharacter)
+
     const item = new vscode.CompletionItem(
-      completion, 
-      vscode.CompletionItemKind.EnumMember // I chose this because it's less common than 'Property' 
+      prefix + completion, 
+      vscode.CompletionItemKind.EnumMember // I chose this as it is a relatively distinct icon 
     ) as CustomCompletionItem
 
+    item.range = range 
     item.insertText = completion  // No longer necessary as 'detail' now contains the logo
     item.filterText = completion  // The culprit of why suggestions were ranked at the bottom
-    // item.sortText = '0' // Force sort at the top always (when compared with other identical prefixes)
-    // Sort model === incoder 0, model === unixcoder 1, model === chatgpt 2, based on Models above 
+    // TODO: I'm not actually sure that the `sortText` below does anything. 
     item.sortText = (model === 'InCoder') ? '0' : (model === 'UniXCoder') ? '1' : '2'
-    item.detail = '\u276E\uff0f\u276f' // Logo 
-  
+    item.detail = '\u276E\uff0f\u276f' // Added the Logo here instead 
     item.documentation = 'Completion from ' + model
 
-    try {
-      const positionFromCompletionToEndOfLine = new vscode.Position(position.line, document.lineAt(position.line).range.end.character);
-      const positionPlusOne = new vscode.Position(position.line, position.character + 1);
-      const charactersAfterCursor = document.getText(new vscode.Range(position, positionFromCompletionToEndOfLine));
-      const characterAfterCursor = charactersAfterCursor.charAt(0);
-
-      const lastTwoCharacterOfPrediction = completion.slice(-2);
-      const lastCharacterOfPrediction = completion.slice(-1);
-
-      if (lastTwoCharacterOfPrediction === '):' || lastTwoCharacterOfPrediction === ');' || lastTwoCharacterOfPrediction === '),') {
-        item.range = new vscode.Range(position, positionFromCompletionToEndOfLine);
-      } else if (characterAfterCursor === lastCharacterOfPrediction) {
-        item.range = new vscode.Range(position, positionPlusOne);
-      }
-    } catch (e) {
-      // this can happen when the line position is no longer valid in the document, 
-      // e.g. if the user deletes some lines 
-    }
-      item.shownTimes = [];
-
-    // console.log('called createCompletionItem')
     item.command = {
       command: 'verifyInsertion',
       title: 'Verify Insertion',
       arguments: [prediction, position, document, verifyToken, this.uuid, item.shownTimes, () => {clearTimeout(this.idleTimer)}]
     };
+    item.shownTimes = [new Date().toISOString()];
+
+    console.log(`\t${prefix} • ${prediction[1].slice(0, 10)} ${prediction[0]}`)
     return item;
   }
 
@@ -412,7 +409,12 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
       'store': storeContext,
     }
 
-    console.log(trigger, 'call to completions API')
+    // DEBUG
+    const lastPrefixLine = prefix.split('\n').pop()
+    const firstSuffixLine = suffix.split('\n').shift()
+    const triggerString = `${trigger} call to completions API [...${lastPrefixLine?.slice(-10)}<S>${firstSuffixLine?.slice(0, 10)}...]`
+    console.log(triggerString)
+
     const clearIdleTimer = () => { clearTimeout(this.idleTimer) }
     clearIdleTimer() // welcome to JS where callbacks are executed after promises but before the next event loop
 
@@ -450,6 +452,71 @@ class CustomCompletionItem extends vscode.CompletionItem {
   shownTimes: string[] = []
 }
 
+
+/** Assuming that the IDE-inserted-scoping-characters `()` and `{}` by nature must always 
+ * appear at the very start of the suffix when the user is typing normally (not infilling), 
+ * we just need to iteratively check a larger range starting from suffix[0] to suffix[0:i], 
+ * and see if it matches the generated completion.
+ */
+function getCompletionItemRange(
+  document: vscode.TextDocument,
+  position: vscode.Position, 
+  completion: string, 
+): vscode.Range {
+
+  const curLine : vscode.TextLine = document.lineAt(position)
+  let endPos: number = position.character
+
+  // If the the line at which the completion is inserted has a substring after the cursor that matches 
+  // part of the completion, we want to delete it to avoid replicating it (often happens with open/close chars)
+  for (endPos; endPos <= curLine.range.end.character; endPos++) {
+    const suffix : string = curLine.text.slice(position.character, endPos)
+    if (!completion.includes(suffix)) {
+      endPos -- 
+      break 
+    }
+    console.log(`completion includes ${suffix}`)
+  }
+  console.log(`using range ${position.character}, ${endPos}`)
+  return new vscode.Range(position, new vscode.Position(position.line, endPos))
+}
+
+/** If the current position is attached to a word (i.e. prefix has no trailing space/context.triggerChar), 
+ * then we want to prepend that last word to the insertText and filterText for it to show up in the menu
+ * Additionally, we want to prepend a space if the previous word is a trigger word, like 'await' 
+ */
+function getCompletionItemPrefix(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  completion: string,
+  triggerCharacter: string | undefined, 
+): string {
+  
+  const wordRange = document.getWordRangeAtPosition(position)
+  if (wordRange) {
+
+    const lastPrefixWord = document.getText(wordRange)
+    // it may be that lastWord ends with the same characters as the start of prediction[1]
+    // in that case, we want to remove the overlapping letters of lastWord from prediction[1]
+    // and then prepend lastWord to prediction[1]
+    for (let i = 0; i < lastPrefixWord.length; i++) {
+      if (completion.startsWith(lastPrefixWord.slice(i))) 
+        return lastPrefixWord.slice(0, i)
+    }
+
+    // If the last word is a trigger word, we want to insert the completion with a space
+    if (allowedTriggerWords.includes(lastPrefixWord)) 
+      return ' ' 
+
+    // Alternatively, if the last word is simply the start of the completion, 
+    // but they don't have any overlapping letters; we want to join them
+    // for languages like fucking javascript to accept the completion
+    if (!triggerCharacter) 
+      return lastPrefixWord
+  }
+  return '' 
+}
+
 /**
    * Calls verification API after a 30s timeout with the completion and the ground truth.
    * TODO: this implementation is incorrect. (also the lack of documentation does not help at all for tracking lines)
@@ -477,7 +544,7 @@ function verifyInsertion(
 
   const [model, completion] = prediction
   // console.log('accepted completion:', completion, 'by model', model, 'at position:', position)
-  console.log(`accepted ${model}'s completion at (${position.line}, ${position.character}): ${completion}`)
+  // console.log(`accepted ${model}'s completion at (${position.line}, ${position.character}): ${completion}`)
 
   const documentName = document.fileName;
   let lineNumber = position.line;
