@@ -378,7 +378,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     item.command = {
       command: 'verifyInsertion',
       title: 'Verify Insertion',
-      arguments: [prediction, position, document, verifyToken, this.uuid, item.shownTimes, () => {clearTimeout(this.idleTimer)}]
+      arguments: [prediction, position, document, verifyToken, this.uuid, item.shownTimes, () => {this.setIdleTrigger()}]
     };
     item.shownTimes = [new Date().toISOString()];
 
@@ -392,10 +392,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     trigger: TriggerType
   ): Promise<CompletionResponse | undefined>
   {
-    const liveDocument :vscode.TextDocument = vscode.window.activeTextEditor?.document || document 
-    const livePosition :vscode.Position = vscode.window.activeTextEditor?.selection.active || position
-
-    const [prefix, suffix] = splitTextAtCursor(liveDocument, livePosition)
+    const [prefix, suffix] = splitTextAtCursor(document, position)
     const storeContext = this.config.get('storeContext')
     const languageId = document.languageId
 
@@ -663,18 +660,14 @@ function splitTextAtCursor(
   // as a result, this function can only be called IFF there is a TextDocument
   if (!document) return ['', ''] 
 
-  const documentLineCount = document.lineCount - 1
-  const lastLine = document.lineAt(documentLineCount)
-  const beginDocumentPosition = new vscode.Position(0, 0)
-  const leftRange = new vscode.Range(beginDocumentPosition, position)
+  const leftText = document.getText(new vscode.Range(
+    new vscode.Position(0, 0), position
+  ))
 
-  const lastLineCharacterOffset = lastLine.range.end.character
-  const lastLineLineOffset = lastLine.lineNumber
-  const endDocumentPosition = new vscode.Position(lastLineLineOffset, lastLineCharacterOffset)
-  const rightRange = new vscode.Range(position, endDocumentPosition)
-
-  const leftText = document.getText(leftRange)
-  const rightText = document.getText(rightRange)
+  const lastLine = document.lineAt(document.lineCount - 1)
+  const rightText = document.getText(new vscode.Range(
+    position, new vscode.Position(lastLine.lineNumber, lastLine.range.end.character)
+  ))
 
   return [
     leftText.substring(-AVG_TOKEN_LENGTH_IN_CHARS), 
