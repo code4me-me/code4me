@@ -23,7 +23,7 @@ def get_request_filter(user_uuid: str, time: datetime) -> Callable[[dict], bool]
         30 mins since the last completion. Otherwise, they are assigned a filter at random '''
     
     if user_uuid in cache and (time - cache[user_uuid][0]).seconds < SESSION_TIMEOUT:
-        filter_type, last_access = cache[user_uuid][1], (time - cache[user_uuid][0]).seconds
+        filter_type, last_access = cache[user_uuid][1], (time - cache[user_uuid][0]).total_seconds()
     else: 
         filter_type, last_access = random.choice(list(filters.keys())), 0.0
 
