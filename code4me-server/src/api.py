@@ -6,7 +6,7 @@ from typing import List, Tuple
 from model import Model
 from datetime import datetime
 from joblib import Parallel, delayed
-from flask import Blueprint, request, Response, redirect
+from flask import Blueprint, request, Response, redirect, current_app
 from limiter import limiter
 
 from user_study import (
@@ -57,13 +57,16 @@ def autocomplete_v2():
         user_uuid = authorise(request)
         request_json = request.json
         
+        # current_app.logger.warning(request_json)
         filter_time, filter_type, should_filter = filter_request(user_uuid, request_json)
 
         predict_time, predictions = get_predictions(request_json) \
             if (not should_filter) or (request_json['trigger'] == 'manual') \
             else (None, {}) 
 
-        print(f'\t\033[1m{"filter" if should_filter else "predict"}\033[0m {len(request_json["prefix"] + request_json["suffix"])} ({filter_type}) {[v[:10] for v in predictions.values()]}')
+        log_filter = f'\033[1m{"filter" if should_filter else "predict"}\033[0m'
+        log_context = f'{request_json["prefix"][-10:]}•{request_json["suffix"][:5]}'
+        current_app.logger.warning(f'{log_filter} {log_context} \t{filter_type} {[v[:10] for v in predictions.values()]}')
 
         verify_token = uuid.uuid4().hex if not should_filter else ''
         prompt_survey = should_prompt_survey(user_uuid) if not should_filter else False
@@ -95,12 +98,12 @@ def autocomplete_v2():
 
 @v2.route("/prediction/verify", methods=["POST"])
 @limiter.limit("4000/hour")
-def verify():
+def verify_v2():
 
     user_uuid = authorise(request)
     verify_json = request.json
 
-    print(verify_json)
+    # current_app.logger.info(verify_json)
 
     verify_token = verify_json['verifyToken']
     file_path = os.path.join(USER_STUDY_DIR, user_uuid, f'{verify_token}.json')
