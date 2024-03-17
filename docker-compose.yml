@@ -35,6 +35,7 @@ services:
       - ./code4me-server/static:/codeforme/static
       - ./codegpt_checkpoint:/codeforme/codegpt_checkpoint
       - ./code4me-server/models:/codeforme/models
+      - ./code4me-server/data_aral:/codeforme/data_aral
     expose:
       - 3000
     environment:
