@@ -186,7 +186,7 @@ class Filter(enum.Enum):
     JOINT_H = 'joint_h'
     JOINT_A = 'joint_a'
 
-no_filter = lambda request_json: True 
+no_filter = lambda request_json: False 
 logres = Logres(coef, intercept)
 set_all_seeds() # just in case 
 context_filter = MyPipeline( device=DEVICE, task='text-classification',
