@@ -56,8 +56,8 @@ def autocomplete_v2():
         # TODO: As we want every request to be authorised, this can be extracted into a decorator
         user_uuid = authorise(request)
         request_json = request.json
-        
-        # current_app.logger.warning(request_json)
+
+        # TODO: add a None filter type for baseline comparison
         filter_time, filter_type, should_filter = filter_request(user_uuid, request_json)
 
         predict_time, predictions = get_predictions(request_json) \
@@ -90,11 +90,15 @@ def autocomplete_v2():
         }
 
     except Exception as e:
-        # logging may be a good idea for debugging
+
+        error_uuid = uuid.uuid4().hex 
+        current_app.logger.warning(f'''
+        Error {error_uuid} for {user_uuid if user_uuid is not None else "unauthenticated user"}
+        {request.json if request.is_json else "no request json found"}
+        ''')
         traceback.print_exc()
-        return response({
-            "error": str(e)
-        }, status=400)
+
+        return response({ "error": error_uuid }, status=400)
 
 @v2.route("/prediction/verify", methods=["POST"])
 @limiter.limit("4000/hour")
