@@ -8,3 +8,4 @@ nltk~=3.8.1
 datasets~=2.9.0
 markdown~=3.4.1
 joblib~=1.2.0
+safetensors 

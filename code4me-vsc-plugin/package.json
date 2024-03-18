@@ -4,7 +4,7 @@
 	"description": "Language model code completion.",
 	"author": "Code4Me",
 	"license": "Apache-2.0",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"categories": [
 		"Machine Learning",
 		"Programming Languages",
@@ -26,10 +26,24 @@
 		"vscode": "^1.47.0"
 	},
 	"activationEvents": [
-		"*"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"commands": [
+			{
+				"command": "code4me.action.triggerSuggest",
+				"title": "Trigger Suggest (code4me)"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "code4me.action.triggerSuggest",
+				"key": "ctrl+space",
+				"mac": "ctrl+space",
+				"when": "editorTextFocus && !suggestWidgetVisible"
+			}
+		],
 		"configuration": {
 			"title": "Code4Me",
 			"properties": {

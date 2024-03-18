@@ -5,4 +5,6 @@ build
 venv
 __pycache__
 users*.json
+data_aral
 
+models

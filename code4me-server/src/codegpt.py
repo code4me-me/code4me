@@ -3,13 +3,16 @@ from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer
 import os
 import torch
 
+# env variable for local testing 
+CODE4ME_TEST = os.environ.get("CODE4ME_TEST", "false") == "true"
+
 checkpoint_path = "gpt2"  # default checkpoint is the non-finetuned gpt2 model
 
 # if CODEGPT_CHECKPOINT_PATH is set, use that checkpoint
 if os.environ.get("CODEGPT_CHECKPOINT_PATH"):
     checkpoint_path = os.environ.get("CODEGPT_CHECKPOINT_PATH")
 
-if not os.path.exists(checkpoint_path):
+if not os.path.exists(checkpoint_path) and not CODE4ME_TEST:
     raise ValueError(f"Invalid checkpoint path: '{checkpoint_path}'")
 
 config = GPT2Config
@@ -23,7 +26,7 @@ model.resize_token_embeddings(len(tokenizer))
 class Beam(object):
     def __init__(self, size, sos, eos):
         self.size = size
-        self.tt = torch.cuda
+        self.tt = torch.cuda if torch.cuda.is_available() else torch
         # The score for each translation on the beam.
         self.scores = self.tt.FloatTensor(size).zero_().to(device)
         # The backpointers at each time-step.
@@ -159,7 +162,8 @@ model.eval()
 break_ids = [tokenizer.sep_token_id]
 
 m = torch.nn.LogSoftmax(dim=-1).to(device)
-zero = torch.cuda.LongTensor(1).fill_(0).to(device)
+# I presume the .cuda. is not necessary here if it is moved to the CUDA device immediately, but not risking it. 
+zero = torch.cuda.LongTensor(1).fill_(0).to(device) if not CODE4ME_TEST else torch.LongTensor(1).fill_(0).to(device)
 
 def codegpt_predict(left_context: str, right_context: str) -> List[str]:
     left_context = left_context.replace("\n", "<EOL>")
@@ -179,7 +183,7 @@ def codegpt_predict(left_context: str, right_context: str) -> List[str]:
     inputs = torch.tensor(tokens, device=device).unsqueeze(0)
     with torch.no_grad():
         beam_size = 1
-        outputs = model(inputs[:, :-1])[1]
+        outputs = model(inputs)[1] 
         p = []
         for i in range(inputs.shape[0]):
             past = [torch.cat([x[0].unsqueeze(0), x[1].unsqueeze(0)], dim=0) if type(x) == tuple else x for x in
