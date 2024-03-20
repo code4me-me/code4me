@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   start(context).then(disposable => {
     context.subscriptions.push(disposable);
-    console.log('Code4me Activated!')
+    console.log(`Code4Me Activated! v${CODE4ME_VERSION}`)
   })
 }
 
@@ -362,12 +362,12 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
     item.detail = '\u276E\uff0f\u276f' // Added the Logo here instead 
     item.documentation = 'Completion from ' + model
 
+    item.shownTimes = [new Date().toISOString()];
     item.command = {
       command: 'verifyInsertion',
       title: 'Verify Insertion',
       arguments: [prediction, position, document, verifyToken, this.uuid, item.shownTimes, () => {this.setIdleTrigger()}]
     };
-    item.shownTimes = [new Date().toISOString()];
 
     // This is useful if you want to see what's exactly going on with the range and prefix modifications
     // I use • to denote the cursor position
