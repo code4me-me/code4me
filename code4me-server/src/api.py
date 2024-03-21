@@ -68,7 +68,7 @@ def autocomplete_v2():
         log_context = f'{request_json["prefix"][-10:]}•{request_json["suffix"][:5]}'
         current_app.logger.warning(f'{log_filter} {log_context} \t{filter_type} {[v[:10] for v in predictions.values()]}')
 
-        verify_token = uuid.uuid4().hex if not should_filter else ''
+        verify_token = uuid.uuid4().hex 
         prompt_survey = should_prompt_survey(user_uuid) if not should_filter else False
 
         store_completion_request(user_uuid, verify_token, {
