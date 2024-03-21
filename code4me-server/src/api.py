@@ -1,5 +1,5 @@
 from __future__ import annotations 
-import os, time, random, json, uuid, glob, torch, traceback
+import os, time, random, json, uuid, torch, traceback
 
 from enum import Enum
 from typing import List, Tuple
@@ -68,7 +68,7 @@ def autocomplete_v2():
         log_context = f'{request_json["prefix"][-10:]}•{request_json["suffix"][:5]}'
         current_app.logger.warning(f'{log_filter} {log_context} \t{filter_type} {[v[:10] for v in predictions.values()]}')
 
-        verify_token = uuid.uuid4().hex if not should_filter else ''
+        verify_token = uuid.uuid4().hex 
         prompt_survey = should_prompt_survey(user_uuid) if not should_filter else False
 
         store_completion_request(user_uuid, verify_token, {
@@ -182,7 +182,9 @@ def autocomplete():
 
     verify_token = uuid.uuid4().hex
 
-    with open(f"data/{user_token}-{verify_token}.json", "w+") as f:
+    user_dir = os.path.join("data", user_token)
+    os.makedirs(user_dir, exist_ok=True)
+    with open(os.path.join(user_dir, f"{verify_token}.json"), "w+") as f:
         f.write(json.dumps({
             "completionTimestamp": datetime.now().isoformat(),
             "triggerPoint": values["triggerPoint"],
@@ -199,9 +201,8 @@ def autocomplete():
             "rightContext": right_context if store_context else None
         }))
 
-    # # # TODO: disabled surveys temporarily, as we are currently looking through >1M files on every request. 
-    # n_suggestions = len(glob.glob(f"data/{user_token}*.json"))
-    # survey = n_suggestions >= 100 and n_suggestions % 50 == 0
+    n_suggestions = len(os.listdir(user_dir))
+    survey = n_suggestions >= 100 and n_suggestions % 50 == 0
     survey = False
 
     return response({
@@ -230,7 +231,7 @@ def verify():
         return res
 
     verify_token = values["verifyToken"]
-    file_path = f"data/{user_token}-{verify_token}.json"
+    file_path = os.path.join("data", user_token, f"{verify_token}.json")
     if not os.path.exists(file_path):
         return response({
             "error": "Invalid verify token"
